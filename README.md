@@ -1,0 +1,2 @@
+# Blog
+For recording knowledge
