@@ -3,4 +3,4 @@
 # 博客分类
 博客主要划分为下面几大类别，可以点击进入：
 
-- [Git相关](/projects)
+- [Git相关](https://github.com/zhaoguohan123/Blog/projects/1)
