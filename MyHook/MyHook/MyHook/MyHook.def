@@ -1,0 +1,6 @@
+LIBRARY	"VDBase.DLL"
+
+EXPORTS
+	;Config
+	SetHooks				@1
+	RemoveHooks				@2

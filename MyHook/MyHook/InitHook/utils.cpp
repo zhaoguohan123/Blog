@@ -12,7 +12,7 @@ void DebugPrintA(const char* format, ...)
 	va_start(ap, format);
 	(void)StringCchVPrintfA(buffer, _countof(buffer), format, ap);
 	va_end(ap);
-	
+	StringCchCatA(buffer, MAX_LOG_LEN, "[cooper]");
 	OutputDebugStringA(buffer);
 }
 
@@ -28,5 +28,6 @@ void DebugPrintW(const wchar_t *format, ...)
 	va_start(ap, format);
 	(void)StringCchVPrintfW(buffer, _countof(buffer), format, ap);
 	va_end(ap);
+	StringCchCatW(buffer, MAX_LOG_LEN, L"[cooper]");
 	OutputDebugStringW(buffer);
 }

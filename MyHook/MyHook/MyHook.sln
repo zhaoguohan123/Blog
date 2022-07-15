@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MyHook", "MyHook\MyHook.vcxproj", "{0115F9EC-F687-402B-9D98-6DF450BD6FDE}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InitHook", "InitHook\InitHook.vcxproj", "{74CA379A-DF20-4B07-8E4C-4669FCE8EB92}"
 EndProject
 Global
@@ -13,6 +15,14 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0115F9EC-F687-402B-9D98-6DF450BD6FDE}.Debug|x64.ActiveCfg = Debug|x64
+		{0115F9EC-F687-402B-9D98-6DF450BD6FDE}.Debug|x64.Build.0 = Debug|x64
+		{0115F9EC-F687-402B-9D98-6DF450BD6FDE}.Debug|x86.ActiveCfg = Debug|Win32
+		{0115F9EC-F687-402B-9D98-6DF450BD6FDE}.Debug|x86.Build.0 = Debug|Win32
+		{0115F9EC-F687-402B-9D98-6DF450BD6FDE}.Release|x64.ActiveCfg = Release|x64
+		{0115F9EC-F687-402B-9D98-6DF450BD6FDE}.Release|x64.Build.0 = Release|x64
+		{0115F9EC-F687-402B-9D98-6DF450BD6FDE}.Release|x86.ActiveCfg = Release|Win32
+		{0115F9EC-F687-402B-9D98-6DF450BD6FDE}.Release|x86.Build.0 = Release|Win32
 		{74CA379A-DF20-4B07-8E4C-4669FCE8EB92}.Debug|x64.ActiveCfg = Debug|x64
 		{74CA379A-DF20-4B07-8E4C-4669FCE8EB92}.Debug|x64.Build.0 = Debug|x64
 		{74CA379A-DF20-4B07-8E4C-4669FCE8EB92}.Debug|x86.ActiveCfg = Debug|Win32
