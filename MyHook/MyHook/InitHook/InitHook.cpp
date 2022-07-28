@@ -64,10 +64,18 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 		DebugPrintA("InstallHook failed!!");
 	}
 
-	do 
+	MSG msg;
+	while (1)      //不可漏掉消息处理，不然程序会卡死
 	{
-		Sleep(5000);
-	} while (TRUE);
+		if (PeekMessageA(&msg, 0, 0, 0, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+			DispatchMessageW(&msg);
+		}
+		else
+			Sleep(0);    //避免CPU全负载运行
+	}
 
 	UnInstallHook();
+	return 0;
 }

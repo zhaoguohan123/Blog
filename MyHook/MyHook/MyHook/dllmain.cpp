@@ -120,6 +120,7 @@ extern "C" BOOL WINAPI RemoveHooks()
 
 LRESULT CALLBACK CallWndProc(int nCode, WPARAM wParam, LPARAM lParam) 
 {
+	
 	if (nCode < 0)
 	{
 		return CallNextHookEx(g_hCallWndHook, nCode, wParam, lParam);
@@ -149,13 +150,18 @@ LRESULT CALLBACK CallWndProc(int nCode, WPARAM wParam, LPARAM lParam)
 
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode,WPARAM wParam,LPARAM lParam)
 {
+	DebugPrintA("LowLevelKeyboardProc");
 	KBDLLHOOKSTRUCT *Key_Info = (KBDLLHOOKSTRUCT*)lParam;
+	DebugPrintA("WM_SYSKEYDOWN nCode = %u",nCode);
 	if (HC_ACTION == nCode)
 	{
+		DebugPrintA("WM_SYSKEYDOWN wParam = %u", wParam);
 		if (WM_KEYDOWN == wParam || WM_SYSKEYDOWN) 
 		{
-			if (Key_Info->vkCode == 'P'&& (GetKeyState(VK_LWIN) & 0x8000) ) //ÆÁ±Ö WIN+P ×éºÏ¼ü(×ó)
+			DebugPrintA("WM_SYSKEYDOWN");
+			if (Key_Info->vkCode == 'D'&& (GetKeyState(VK_LWIN) & 0x8000) ) //ÆÁ±Ö WIN+D ×éºÏ¼ü(×ó)
 			{
+				DebugPrintA("HOOK win + D");
 				return TRUE;
 			}
 		}
