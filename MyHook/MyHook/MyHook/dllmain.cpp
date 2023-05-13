@@ -62,13 +62,15 @@ void DebugPrintA(const char* format, ...)
 	OutputDebugStringA(buffer);
 }
 
+// 安装键盘钩子和窗口消息钩子
 extern "C" BOOL WINAPI SetHooks() 
 {
 	BOOL bSuccess = TRUE;
 
 	if (!g_hCallWndHook)
 	{
-		g_hCallWndHook = SetWindowsHookEx(WH_CALLWNDPROC, CallWndProc, g_hHookInstance, 0);                             // 消息钩子
+		g_hCallWndHook = SetWindowsHookEx(WH_CALLWNDPROC, CallWndProc, g_hHookInstance, 0);  
+		// 当调用SetHooks函数的时候，SetWindowsHookEx函数就将CallWndProc添加到钩链
 		if (g_hCallWndHook == NULL)
 		{
 			DebugPrintA("SetHooks CallWndProc failed: %d", GetLastError());
@@ -93,7 +95,7 @@ extern "C" BOOL WINAPI SetHooks()
 	return bSuccess;
 }
 
-
+// 卸载键盘钩子和窗口钩子
 extern "C" BOOL WINAPI RemoveHooks()
 {
 	if (g_hCallWndHook)
@@ -118,6 +120,7 @@ extern "C" BOOL WINAPI RemoveHooks()
 	return TRUE;
 }
 
+// 窗口钩子回调
 LRESULT CALLBACK CallWndProc(int nCode, WPARAM wParam, LPARAM lParam) 
 {
 	
@@ -125,46 +128,62 @@ LRESULT CALLBACK CallWndProc(int nCode, WPARAM wParam, LPARAM lParam)
 	{
 		return CallNextHookEx(g_hCallWndHook, nCode, wParam, lParam);
 	}
-	CWPSTRUCT* pMsgParam = (CWPSTRUCT*)lParam;
-	HWND hwnd = pMsgParam->hwnd;
+	char szPath[MAX_PATH] = { 0, };        //MAX_PATH定义了编译器所支持的最长全路径名的长度
+	char *p = NULL;
+	GetModuleFileNameA(NULL, szPath, MAX_PATH);   //当前进程的全路径储存到szPath中
+	p = strrchr(szPath, '\\');     //p为字符'\\'之后到szPath字符串的结尾,说明取的是当前程序的进程名
 
-	switch (pMsgParam->message)
+	if (0 == _stricmp(p + 1,"Dbgview.exe")) // DebugPrintA也会给debugview发窗口消息，所以可能会导致debivie.exe窗口无响应
 	{
-		case WM_SHOWWINDOW:
-		{
-			DebugPrintA("HOOK WM_SHOWWINDOW ");
-		}
-		break;
-
-		case WM_SIZE:
-		{
-			DebugPrintA("HOOK WM_SIZE");
-		}
-		break;
-	default:
-		break;
+		return CallNextHookEx(g_hCallWndHook, nCode, wParam, lParam);
 	}
-	CallNextHookEx(g_hCallWndHook, nCode, wParam, lParam);
+	
+	if (0 == _stricmp(p + 1, "notepad.exe")) // 比较当前进程名称，若为notepad.exe，则消息不会传递给应用程序或下一个钩子函数
+	{
+		CWPSTRUCT* pMsgParam = (CWPSTRUCT*)lParam;
+		HWND hwnd = pMsgParam->hwnd;
+
+		switch (pMsgParam->message)
+		{
+			case WM_SHOWWINDOW:
+			{
+				DebugPrintA("HOOK WM_SHOWWINDOW ");
+			}
+			break;
+
+			case WM_SIZE:
+			{
+				DebugPrintA("HOOK WM_SIZE");
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	return CallNextHookEx(g_hCallWndHook, nCode, wParam, lParam);
 }
 
 
+// 键盘钩子回调
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode,WPARAM wParam,LPARAM lParam)
 {
-	DebugPrintA("LowLevelKeyboardProc");
-	KBDLLHOOKSTRUCT *Key_Info = (KBDLLHOOKSTRUCT*)lParam;
-	DebugPrintA("WM_SYSKEYDOWN nCode = %u",nCode);
-	if (HC_ACTION == nCode)
-	{
-		DebugPrintA("WM_SYSKEYDOWN wParam = %u", wParam);
-		if (WM_KEYDOWN == wParam || WM_SYSKEYDOWN) 
-		{
-			DebugPrintA("WM_SYSKEYDOWN");
-			if (Key_Info->vkCode == 'D'&& (GetKeyState(VK_LWIN) & 0x8000) ) //屏敝 WIN+D 组合键(左)
-			{
-				DebugPrintA("HOOK win + D");
-				return TRUE;
-			}
-		}
+	//在WH_KEYBOARD_LL模式下lParam 是指向KBDLLHOOKSTRUCT类型地址
+	KBDLLHOOKSTRUCT *pkbhs = (KBDLLHOOKSTRUCT *)lParam;
+	//如果nCode等于HC_ACTION则处理该消息，如果小于0，则钩子子程就必须将该消息传递给 CallNextHookEx
+	//if (nCode == HC_ACTION){
+	if (pkbhs->vkCode == VK_ESCAPE && GetAsyncKeyState(VK_CONTROL) & 0x8000 && GetAsyncKeyState(VK_SHIFT) & 0x8000) {
+		DebugPrintA("Ctrl+Shift+Esc"); // 任务管理器快捷键
+		return 1;
 	}
+	else if (pkbhs->vkCode == VK_TAB && pkbhs->flags & LLKHF_ALTDOWN) {
+		DebugPrintA("Alt+Tab");
+		return 1;
+	}
+	else if (pkbhs->vkCode == VK_LWIN || pkbhs->vkCode == VK_RWIN) {
+		DebugPrintA("LWIN/RWIN");
+		return 1;
+	}
+
 	return CallNextHookEx(g_hKeyboardHook, nCode, wParam, lParam);
 }
