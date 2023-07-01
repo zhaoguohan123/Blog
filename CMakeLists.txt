@@ -1,0 +1,45 @@
+cmake_minimum_required(VERSION 3.10)
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.15")
+    # this is for MSVC_RUNTIME_LIBRARY property below
+    cmake_policy(SET CMP0091 NEW)
+endif()
+
+# 清除build文件下的东西
+file(REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/build)
+
+if(MSVC)
+    # see https://stackoverflow.com/questions/28178978/how-to-generate-pdb-files-for-release-build-with-cmake-flags/31264946
+    # release 模式下生成调试日志
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF" CACHE STRING "" FORCE)
+
+    set(COMMSUPPW_LIBRARY comsuppw)
+else(MSVC)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -s")
+
+    set(COMMSUPPW_LIBRARY)
+endif(MSVC)
+
+# DWINVER=0x0601: 指定了windows的平台或版本
+add_definitions(-DUNICODE -D_UNICODE -DOLDMSVCRT -DWINVER=0x0601 -DNOMINMAX)
+
+# 包含文件
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CppDesignModel)
+
+
+# file(GLOB...) RELATIVE:相对路径  所有源文件用COMMON_FILES代替
+file(GLOB COMMON_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} Common/*.cpp Common/*.h)
+source_group(common FILES ${COMMON_FILES})
+
+# ----------------------- project CppDesignModel------------------------------------------ #
+file(GLOB CPPDESIGNMODEL_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CppDesignModel/*.cpp CppDesignModel/*.h)
+source_group(CppDesignModel FILES ${CPPDESIGNMODEL_FILES})
+
+add_executable(CppDesignModel ${COMMON_FILES} ${CPPDESIGNMODEL_FILES} )
+
+
+set_target_properties(CppDesignModel PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/CppDesignModel"
+)
+# ----------------------- project CppDesignModel------------------------------------------ #
