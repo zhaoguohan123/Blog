@@ -1,5 +1,5 @@
-#ifndef _COMMONM_HEADf_
-#define _COMMONM_HEADf_
+#ifndef _COMMONM_HEAD_
+#define _COMMONM_HEAD_
 
 #include <Windows.h>
 #include <stdio.h>

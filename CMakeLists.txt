@@ -26,7 +26,7 @@ add_definitions(-DUNICODE -D_UNICODE -DOLDMSVCRT -DWINVER=0x0601 -DNOMINMAX)
 # 包含文件
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CppDesignModel)
-
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CommonTools)
 
 # file(GLOB...) RELATIVE:相对路径  所有源文件用COMMON_FILES代替
 file(GLOB COMMON_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} Common/*.cpp Common/*.h)
@@ -43,3 +43,16 @@ set_target_properties(CppDesignModel PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/CppDesignModel"
 )
 # ----------------------- project CppDesignModel------------------------------------------ #
+
+
+# ----------------------- project CommonTools------------------------------------------ #
+file(GLOB COMMON_TOOLS_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/*.cpp CommonTools/*.h)
+source_group(CommonTools FILES ${COMMON_TOOLS_FILES})
+
+add_executable(CommonTools ${COMMON_FILES} ${COMMON_TOOLS_FILES} )
+
+
+set_target_properties(CommonTools PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/CommonTools"
+)
+# ----------------------- project CommonTools------------------------------------------ #
