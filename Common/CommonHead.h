@@ -2,9 +2,12 @@
 #define _COMMONM_HEAD_
 
 #include <Windows.h>
+#include <winternl.h>
 #include <stdio.h>
 #include <iostream>
 #include <strsafe.h>
+
+#include <vector>
 
 /* 函数说明：打印日志到DebugView
 参数：
