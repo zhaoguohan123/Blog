@@ -9,7 +9,7 @@ int main(int argc, TCHAR* argv[])
     //serv_opt::run_serv(argc, argv);
     
     // 2.遍历所有的内核obj
-    list_kernel_obj::get_list_obj();
+    list_sysbol_link_obj();
     getchar();
     return 0;
 }
