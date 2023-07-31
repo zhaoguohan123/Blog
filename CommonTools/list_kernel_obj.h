@@ -2,7 +2,6 @@
 #define _LIST_KERNEL_OBJ_
 #include "CommonHead.h"
 
-#include "stdafx.h"
 #include "windows.h"
 #include "stdio.h"
 
@@ -224,7 +223,7 @@ namespace MyWinobj{
         return 0;
     }
 
-    int _tmain(int argc, _TCHAR* argv[])
+    int _tmain()
     {
 
         _UNICODE_STRING UNI = {0};

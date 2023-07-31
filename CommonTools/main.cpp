@@ -9,7 +9,7 @@ int main(int argc, TCHAR* argv[])
     //serv_opt::run_serv(argc, argv);
     
     // 2.遍历所有的内核obj
-    list_sysbol_link_obj();
+    MyWinobj::_tmain();
     getchar();
     return 0;
 }
