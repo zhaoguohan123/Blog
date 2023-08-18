@@ -171,6 +171,7 @@ namespace serv_opt
 
         SvcInit(dwArgc, lpszArgv);
     }
+
     DWORD WINAPI exe_fun(LPVOID lParam)
     {
         MyDebugPrintA("11111111111111111111111111111111");

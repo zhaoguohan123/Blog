@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
+project(ZghCppPro)
+
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.15")
     # this is for MSVC_RUNTIME_LIBRARY property below
     cmake_policy(SET CMP0091 NEW)
@@ -27,6 +29,10 @@ add_definitions(-DUNICODE -D_UNICODE -DOLDMSVCRT -DWINVER=0x0601 -DNOMINMAX)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CppDesignModel)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CommonTools)
+include_directories("C:/Boost/include/boost-1_82")
+# 引入boost库 begin
+link_directories("C:/Boost/lib")
+# 引入boost库 end
 
 # file(GLOB...) RELATIVE:相对路径  所有源文件用COMMON_FILES代替
 file(GLOB COMMON_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} Common/*.cpp Common/*.h)
@@ -38,21 +44,27 @@ source_group(CppDesignModel FILES ${CPPDESIGNMODEL_FILES})
 
 add_executable(CppDesignModel ${COMMON_FILES} ${CPPDESIGNMODEL_FILES} )
 
-
 set_target_properties(CppDesignModel PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/CppDesignModel"
 )
+
 # ----------------------- project CppDesignModel------------------------------------------ #
+
+
 
 
 # ----------------------- project CommonTools------------------------------------------ #
 file(GLOB COMMON_TOOLS_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/*.cpp CommonTools/*.h)
 source_group(CommonTools FILES ${COMMON_TOOLS_FILES})
 
-add_executable(CommonTools ${COMMON_FILES} ${COMMON_TOOLS_FILES} )
+add_compile_options("/std:c++17")
+add_executable(CommonTools ${COMMON_FILES} ${COMMON_TOOLS_FILES})
+target_link_libraries(CommonTools ${Boost_LIBRARIES})
+# 添加库文件到项目
 
-
+# 修改编译属性: 1.指定输出目录
 set_target_properties(CommonTools PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/CommonTools"
 )
+
 # ----------------------- project CommonTools------------------------------------------ #

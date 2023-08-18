@@ -8,6 +8,11 @@
 #include <strsafe.h>
 
 #include <vector>
+#include<string>
+
+#include <boost/thread.hpp>
+#include <boost/bind.hpp>
+#include <boost/make_shared.hpp>
 
 /* 函数说明：打印日志到DebugView
 参数：

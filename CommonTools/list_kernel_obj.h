@@ -223,7 +223,7 @@ namespace MyWinobj{
         return 0;
     }
 
-    int _tmain()
+    int main()
     {
 
         _UNICODE_STRING UNI = {0};
