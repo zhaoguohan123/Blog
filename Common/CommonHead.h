@@ -14,16 +14,16 @@
 #include <boost/bind.hpp>
 #include <boost/make_shared.hpp>
 
-/* º¯ÊıËµÃ÷£º´òÓ¡ÈÕÖ¾µ½DebugView
-²ÎÊı£º
-Format [in] ĞèÒª´òÓ¡µÄ×Ö·û´®
-·µ»ØÖµ£ºÎŞ
+/* å‡½æ•°è¯´æ˜ï¼šæ‰“å°æ—¥å¿—åˆ°DebugView
+å‚æ•°ï¼š
+Format [in] éœ€è¦æ‰“å°çš„å­—ç¬¦ä¸²
+è¿”å›å€¼ï¼šæ— 
 */
 
-//¶à×Ö·û°æ
+//å¤šå­—ç¬¦ç‰ˆ
 void MyDebugPrintA(const char* format, ...);
 
-// ¿í×Ö·û°æ
+// å®½å­—ç¬¦ç‰ˆ
 void MyDebugPrintW(const wchar_t *format, ...);
 
 #ifdef _UNICODE

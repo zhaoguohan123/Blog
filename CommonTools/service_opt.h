@@ -3,8 +3,8 @@
 #include "CommonHead.h"
 
 /*
-1. cmd ÔËĞĞ£º CommonTools.exe "install"
-2. ´ò¿ª·şÎñ¾Í¿ÉÒÔÔËĞĞexe_funº¯Êı
+1. cmd è¿è¡Œï¼š CommonTools.exe "install"
+2. æ‰“å¼€æœåŠ¡å°±å¯ä»¥è¿è¡Œexe_funå‡½æ•°
 */
 
 

@@ -3,17 +3,17 @@
 #include "list_kernel_obj.h"
 #include "DestructWithThreadNotEnd.h"
 
-// ´´½¨Ò»¸ö·þÎñ£¬²¢ÔÚ·þÎñÖÐÊä³ö´«ÈëµÄ²ÎÊý
+// åˆ›å»ºä¸€ä¸ªæœåŠ¡ï¼Œå¹¶åœ¨æœåŠ¡ä¸­è¾“å‡ºä¼ å…¥çš„å‚æ•°
 int main(int argc, TCHAR* argv[])
 {
-    // //1 . ´´½¨·þÎñ
+    // //1 . åˆ›å»ºæœåŠ¡
     //serv_opt::run_serv(argc, argv);
     
-    // 2.±éÀúËùÓÐµÄÄÚºËobj
+    // 2.éåŽ†æ‰€æœ‰çš„å†…æ ¸obj
     //MyWinobj::main();
 
 
-    //3. ÀàÎö¹¹Ê±£¬ÀàÖÐµÄÏß³ÌÎ´ÍË³ö£¬ÇÒÔÚÊ¹ÓÃÀàÖÐ¶ÔÏó
+    //3. ç±»æžæž„æ—¶ï¼Œç±»ä¸­çš„çº¿ç¨‹æœªé€€å‡ºï¼Œä¸”åœ¨ä½¿ç”¨ç±»ä¸­å¯¹è±¡
     DestructWithThreadNotEnd::main();
 
     getchar();
