@@ -1,0 +1,23 @@
+﻿  Building 'iusu' with toolset 'WindowsKernelModeDriver10.0' and the 'Desktop' target platform.
+  Stamping x64\Release\iusu.inf [Version] section with DriverVer=08/09/2023,11.52.45.666
+  iusu.cpp
+iusu.cpp(55): warning C4244: “=”: 从“ULONG_PTR”转换到“int”，可能丢失数据
+  iusu.vcxproj -> C:\Users\Administrator\Desktop\zgh\iusu\x64\Release\iusu.sys
+  iusu.vcxproj -> C:\Users\Administrator\Desktop\zgh\iusu\x64\Release\iusu.pdb (Full PDB)
+  Done Adding Additional Store
+  Successfully signed: C:\Users\Administrator\Desktop\zgh\iusu\x64\Release\iusu.sys
+  
+  ........................
+  Signability test complete.
+  
+  Errors:
+  None
+  
+  Warnings:
+  None
+  
+  Catalog generation complete.
+  C:\Users\Administrator\Desktop\zgh\iusu\x64\Release\iusu\iusu.cat
+  Done Adding Additional Store
+  Successfully signed: C:\Users\Administrator\Desktop\zgh\iusu\x64\Release\iusu\iusu.cat
+  

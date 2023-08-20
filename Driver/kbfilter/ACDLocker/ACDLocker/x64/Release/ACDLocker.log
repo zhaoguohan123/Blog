@@ -1,0 +1,22 @@
+﻿  Building 'ACDLocker' with toolset 'WindowsKernelModeDriver10.0' and the 'Desktop' target platform.
+  Stamping x64\Release\ACDLocker.inf [Version] section with DriverVer=08/09/2023,16.48.26.520
+  ACDLocker.c
+  ACDLocker.vcxproj -> C:\Users\Administrator\Desktop\zgh\ACDLocker\x64\Release\ACDLocker.sys
+  ACDLocker.vcxproj -> C:\Users\Administrator\Desktop\zgh\ACDLocker\x64\Release\ACDLocker.pdb (Full PDB)
+  Done Adding Additional Store
+  Successfully signed: C:\Users\Administrator\Desktop\zgh\ACDLocker\x64\Release\ACDLocker.sys
+  
+  ........................
+  Signability test complete.
+  
+  Errors:
+  None
+  
+  Warnings:
+  None
+  
+  Catalog generation complete.
+  C:\Users\Administrator\Desktop\zgh\ACDLocker\x64\Release\ACDLocker\acdlocker.cat
+  Done Adding Additional Store
+  Successfully signed: C:\Users\Administrator\Desktop\zgh\ACDLocker\x64\Release\ACDLocker\acdlocker.cat
+  

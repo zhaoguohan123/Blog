@@ -1,0 +1,28 @@
+﻿  Building 'HotkeyKrnl' with toolset 'WindowsKernelModeDriver10.0' and the 'Desktop' target platform.
+  Stamping x64\Release\HotkeyKrnl.inf [Version] section with DriverVer=08/09/2023,21.12.34.115
+  HotKeyKrnl.c
+..\HotKeyKrnl.c(374): warning C4047: “函数”:“PCSTR”与“ULONG_PTR”的间接级别不同
+..\HotKeyKrnl.c(374): warning C4024: “DbgPrint”: 形参和实参 1 的类型不同
+..\HotKeyKrnl.c(379): warning C4047: “函数”:“PCSTR”与“USHORT”的间接级别不同
+..\HotKeyKrnl.c(379): warning C4024: “DbgPrint”: 形参和实参 1 的类型不同
+  KeyTable.c
+  正在生成代码...
+  HotkeyKrnl.vcxproj -> C:\Users\Administrator\Desktop\zgh\HotkeyKrnl\x64\Release\HotkeyKrnl.sys
+  HotkeyKrnl.vcxproj -> C:\Users\Administrator\Desktop\zgh\HotkeyKrnl\x64\Release\HotkeyKrnl.pdb (Full PDB)
+  Done Adding Additional Store
+  Successfully signed: C:\Users\Administrator\Desktop\zgh\HotkeyKrnl\x64\Release\HotkeyKrnl.sys
+  
+  ........................
+  Signability test complete.
+  
+  Errors:
+  None
+  
+  Warnings:
+  None
+  
+  Catalog generation complete.
+  C:\Users\Administrator\Desktop\zgh\HotkeyKrnl\x64\Release\HotkeyKrnl\hotkeykrnl.cat
+  Done Adding Additional Store
+  Successfully signed: C:\Users\Administrator\Desktop\zgh\HotkeyKrnl\x64\Release\HotkeyKrnl\hotkeykrnl.cat
+  
