@@ -1,27 +1,27 @@
-#include "worker.h"
+ï»¿#include "worker.h"
 #include <ntddk.h>
 #include <ntddkbd.h>
 
 ULONG               gKeyCount       = 0;
 PIRP                PendingIrp = NULL;
-extern PDEVICE_OBJECT		filterDevice = NULL;	// ¹ıÂËÉè±¸ 
+extern PDEVICE_OBJECT		filterDevice = NULL;	// è¿‡æ»¤è®¾å¤‡ 
 #define DELAY_ONE_MICROSECOND  (-10)
 #define DELAY_ONE_MILLISECOND  (DELAY_ONE_MICROSECOND * 1000)
 
-// Éè±¸À©Õ¹½á¹¹
+// è®¾å¤‡æ‰©å±•ç»“æ„
 typedef struct _Dev_exten
 {
-	ULONG Size;						// ¸Ã½á¹¹´óĞ¡
-	PDEVICE_OBJECT FilterDevice;	// ¹ıÂËÉè±¸¶ÔÏó
-	PDEVICE_OBJECT TargeDevice;		// ÏÂÒ»Éè±¸¶ÔÏó
-	PDEVICE_OBJECT LowDevice;		// ×îµ×²ãÉè±¸¶ÔÏó
-	KSPIN_LOCK IoRequestSpinLock;	// ×ÔĞıËø
-	KEVENT IoInProgressEvent;		// ÊÂ¼ş
+	ULONG Size;						// è¯¥ç»“æ„å¤§å°
+	PDEVICE_OBJECT FilterDevice;	// è¿‡æ»¤è®¾å¤‡å¯¹è±¡
+	PDEVICE_OBJECT TargeDevice;		// ä¸‹ä¸€è®¾å¤‡å¯¹è±¡
+	PDEVICE_OBJECT LowDevice;		// æœ€åº•å±‚è®¾å¤‡å¯¹è±¡
+	KSPIN_LOCK IoRequestSpinLock;	// è‡ªæ—‹é”
+	KEVENT IoInProgressEvent;		// äº‹ä»¶
 	PIRP pIrp;						// IRP
 } DEV_EXTENSION, *PDEV_EXTENSION;
 
 
-// ÉùÃ÷Î¢ÈíÎ´¹«¿ªµÄObReferenceObjectByName()º¯Êı
+// å£°æ˜å¾®è½¯æœªå…¬å¼€çš„ObReferenceObjectByName()å‡½æ•°
 NTSTATUS ObReferenceObjectByName(
 	PUNICODE_STRING ObjectName,
 	ULONG Attributes,
@@ -36,7 +36,7 @@ NTSTATUS ObReferenceObjectByName(
 extern POBJECT_TYPE *IoDriverObjectType;
 
 
-//½â³ı°ó¶¨
+//è§£é™¤ç»‘å®š
 NTSTATUS DeAttach(PDEVICE_OBJECT pdevice)
 {
 	PDEV_EXTENSION devExt;
@@ -55,7 +55,7 @@ CancelKeyboardIrp(
 	IN PIRP Irp
 )
 {
-	// ÕâÀïÓĞĞ©ÅĞ¶ÏÓ¦¸Ã²»ÊÇ±ØĞëµÄ£¬²»¹ı»¹ÊÇĞ¡ĞÄµãºÃ
+	// è¿™é‡Œæœ‰äº›åˆ¤æ–­åº”è¯¥ä¸æ˜¯å¿…é¡»çš„ï¼Œä¸è¿‡è¿˜æ˜¯å°å¿ƒç‚¹å¥½
 	if (Irp->Cancel || Irp->CancelRoutine == NULL)
 	{
 		DbgPrint("[salmon]Can't Cancel the irp!");
@@ -71,7 +71,7 @@ CancelKeyboardIrp(
 }
 
 
-//Éè±¸Ğ¶ÔØº¯Êı
+//è®¾å¤‡å¸è½½å‡½æ•°
 NTSTATUS DriverUnload(PDRIVER_OBJECT pDriver)
 {
 	PDEVICE_OBJECT pDevice;
@@ -81,12 +81,12 @@ NTSTATUS DriverUnload(PDRIVER_OBJECT pDriver)
 	UNREFERENCED_PARAMETER(pDriver);
 	DbgPrint("[salmon]DriverEntry Unloading...");
 
-	//°Ñµ±Ç°Ïß³ÌÉèÖÃÎªµÍÊµÊ±Ä£Ê½£¬ÈÃÆäÔËĞĞ¾¡Á¿ÉÙÓ°ÏìÆäËû³ÌĞò
+	//æŠŠå½“å‰çº¿ç¨‹è®¾ç½®ä¸ºä½å®æ—¶æ¨¡å¼ï¼Œè®©å…¶è¿è¡Œå°½é‡å°‘å½±å“å…¶ä»–ç¨‹åº
 	KeSetPriorityThread(KeGetCurrentThread(), LOW_REALTIME_PRIORITY);
 
 	lDelay = RtlConvertLongToLargeInteger(100 * DELAY_ONE_MILLISECOND);
 
-	//±éÀúËùÓĞÉè±¸£¬Ò»Ò»½â³ı°ó¶¨
+	//éå†æ‰€æœ‰è®¾å¤‡ï¼Œä¸€ä¸€è§£é™¤ç»‘å®š
 	pDevice = pDriver->DeviceObject;
 	while (pDevice)
 	{
@@ -110,7 +110,7 @@ NTSTATUS DriverUnload(PDRIVER_OBJECT pDriver)
 }
 
 
-// Éè±¸²Ù×÷Í¨ÓÃ·Ö·¢º¯Êı
+// è®¾å¤‡æ“ä½œé€šç”¨åˆ†å‘å‡½æ•°
 NTSTATUS GeneralDispatch(PDEVICE_OBJECT pDevice, PIRP pIrp)
 {
 	NTSTATUS status;
@@ -124,7 +124,7 @@ NTSTATUS GeneralDispatch(PDEVICE_OBJECT pDevice, PIRP pIrp)
 	return status;
 }
 
-// ¶¨Òå¼üÅÌ×´Ì¬
+// å®šä¹‰é”®ç›˜çŠ¶æ€
 typedef struct _KEYBOARD_STATE {
 	BOOLEAN CtrlPressed;
 	BOOLEAN AltPressed;
@@ -133,7 +133,7 @@ typedef struct _KEYBOARD_STATE {
 
 KEYBOARD_STATE keyboardState = { FALSE, FALSE, FALSE };
 
-// IRP¶Á²Ù×÷µÄÍê³É»Øµ÷º¯Êı
+// IRPè¯»æ“ä½œçš„å®Œæˆå›è°ƒå‡½æ•°
 NTSTATUS ReadComp(PDEVICE_OBJECT pDevice, PIRP pIrp, PVOID Context)
 {
 	NTSTATUS status;
@@ -143,7 +143,7 @@ NTSTATUS ReadComp(PDEVICE_OBJECT pDevice, PIRP pIrp, PVOID Context)
 	stack = IoGetCurrentIrpStackLocation(pIrp);
 	if (NT_SUCCESS(pIrp->IoStatus.Status))
 	{
-		// »ñÈ¡¼üÅÌÊı¾İ
+		// è·å–é”®ç›˜æ•°æ®
 		myData = pIrp->AssociatedIrp.SystemBuffer;
 		keyNumber = (ULONG)(pIrp->IoStatus.Information / sizeof(PKEYBOARD_INPUT_DATA));
 
@@ -157,31 +157,31 @@ NTSTATUS ReadComp(PDEVICE_OBJECT pDevice, PIRP pIrp, PVOID Context)
 		{
 			switch (myData->MakeCode)
 			{
-			case 0x1d:									// ctrl¼üµÄÉ¨ÃèÂë
+			case 0x1d:									// ctrlé”®çš„æ‰«æç 
 				keyboardState.CtrlPressed = TRUE;
 				break;
 			case 0x38:
-				keyboardState.AltPressed = TRUE;		// alt¼üµÄÉ¨ÃèÂë
+				keyboardState.AltPressed = TRUE;		// alté”®çš„æ‰«æç 
 				break;
 			case 0x53:
-				keyboardState.DeletePressed = TRUE;		// del¼üµÄÉ¨ÃèÂë
+				keyboardState.DeletePressed = TRUE;		// delé”®çš„æ‰«æç 
 				break;
 			default:
 				break;
 			}
 		}
-		// ¼ì²éÊÇ·ñÍ¬Ê±°´ÏÂÁËCtrl¡¢AltºÍDelete¼ü
+		// æ£€æŸ¥æ˜¯å¦åŒæ—¶æŒ‰ä¸‹äº†Ctrlã€Altå’ŒDeleteé”®
 		if (keyboardState.CtrlPressed && keyboardState.AltPressed && keyboardState.DeletePressed)
 		{
-			myData->MakeCode = 0x00; // ½«del°´¼üÖÃÎªÎŞĞ§
+			myData->MakeCode = 0x00; // å°†delæŒ‰é”®ç½®ä¸ºæ— æ•ˆ
 			
-			DbgPrint("Ctrl+Alt+Delete ×éºÏ¼üÒÑ°´ÏÂ");
-			// ·¢ËÍctrl alt delÖ¸Áî¸ø¿Í»§¶Ë
+			DbgPrint("Ctrl+Alt+Delete ç»„åˆé”®å·²æŒ‰ä¸‹");
+			// å‘é€ctrl alt delæŒ‡ä»¤ç»™å®¢æˆ·ç«¯
 
 
 			myData->MakeCode = 0x00;
 
-			//»¹Ô­¼ÇÂ¼×´Ì¬
+			//è¿˜åŸè®°å½•çŠ¶æ€
 			keyboardState.CtrlPressed = FALSE;
 			keyboardState.AltPressed = FALSE;
 			keyboardState.DeletePressed = FALSE;
@@ -196,7 +196,7 @@ NTSTATUS ReadComp(PDEVICE_OBJECT pDevice, PIRP pIrp, PVOID Context)
 }
 
 
-// IRP¶Á·Ö·¢º¯Êı
+// IRPè¯»åˆ†å‘å‡½æ•°
 NTSTATUS ReadDispatch(PDEVICE_OBJECT pDevice, PIRP pIrp)
 {
 		NTSTATUS status = STATUS_SUCCESS;
@@ -213,42 +213,24 @@ NTSTATUS ReadDispatch(PDEVICE_OBJECT pDevice, PIRP pIrp)
 			IoCompleteRequest(pIrp, IO_NO_INCREMENT);
 			return status;
 		}
-		// µÃµ½Éè±¸À©Õ¹¡£Ä¿µÄÊÇÖ®ºóÎªÁË»ñµÃÏÂÒ»¸öÉè±¸µÄÖ¸Õë¡£
+		// å¾—åˆ°è®¾å¤‡æ‰©å±•ã€‚ç›®çš„æ˜¯ä¹‹åä¸ºäº†è·å¾—ä¸‹ä¸€ä¸ªè®¾å¤‡çš„æŒ‡é’ˆã€‚
 		devExt = pDevice->DeviceExtension;
 		lowDevice = devExt->LowDevice;
 		stack = IoGetCurrentIrpStackLocation(pIrp);
 
 		gKeyCount++;
 		PendingIrp = pIrp;
-		// ¸´ÖÆIRPÕ»
+		// å¤åˆ¶IRPæ ˆ
 		IoCopyCurrentIrpStackLocationToNext(pIrp);
-		// ÉèÖÃIRPÍê³É»Øµ÷º¯Êı
+		// è®¾ç½®IRPå®Œæˆå›è°ƒå‡½æ•°
 		IoSetCompletionRoutine(pIrp, ReadComp, pDevice, TRUE, TRUE, TRUE);
-
-		ULONG keyNumber;
-		PKEYBOARD_INPUT_DATA myData;
-		if (NT_SUCCESS(pIrp->IoStatus.Status))
-		{
-			// »ñÈ¡¼üÅÌÊı¾İ
-			myData = pIrp->AssociatedIrp.SystemBuffer;
-			keyNumber = (ULONG)(pIrp->IoStatus.Information / sizeof(PKEYBOARD_INPUT_DATA));
-
-			for (ULONG i = 0; i < keyNumber; i++)
-			{
-				DbgPrint("[salmon]numkey:%u sancode:%x %s ", keyNumber, myData->MakeCode, myData->Flags ? "Up" : "Down");
-			}
-		}
-		else
-		{
-			DbgPrint("pIrp->IoStatus.Status is %u", pIrp->IoStatus.Status);
-		}
 
 		status = IoCallDriver(lowDevice, pIrp);
 		return status;
 }
 
 
-// µçÔ´IRP·Ö·¢º¯Êı
+// ç”µæºIRPåˆ†å‘å‡½æ•°
 NTSTATUS PowerDispatch(PDEVICE_OBJECT pDevice, PIRP pIrp)
 {
 	PDEV_EXTENSION devExt;
@@ -260,7 +242,7 @@ NTSTATUS PowerDispatch(PDEVICE_OBJECT pDevice, PIRP pIrp)
 }
 
 
-// ¼´²å¼´ÓÃIRP·Ö·¢º¯Êı
+// å³æ’å³ç”¨IRPåˆ†å‘å‡½æ•°
 NTSTATUS PnPDispatch(PDEVICE_OBJECT pDevice, PIRP pIrp)
 {
 	PDEV_EXTENSION devExt;
@@ -273,18 +255,18 @@ NTSTATUS PnPDispatch(PDEVICE_OBJECT pDevice, PIRP pIrp)
 	switch (stack->MinorFunction)
 	{
 	case IRP_MN_REMOVE_DEVICE :
-		// Ê×ÏÈ°ÑÇëÇó·¢ÏÂÈ¥
+		// é¦–å…ˆæŠŠè¯·æ±‚å‘ä¸‹å»
 		IoSkipCurrentIrpStackLocation(pIrp);
 		IoCallDriver(devExt->LowDevice, pIrp);
-		// È»ºó½â³ı°ó¶¨¡£
+		// ç„¶åè§£é™¤ç»‘å®šã€‚
 		IoDetachDevice(devExt->LowDevice);
-		// É¾³ıÎÒÃÇ×Ô¼ºÉú³ÉµÄĞéÄâÉè±¸¡£
+		// åˆ é™¤æˆ‘ä»¬è‡ªå·±ç”Ÿæˆçš„è™šæ‹Ÿè®¾å¤‡ã€‚
 		IoDeleteDevice(pDevice);
 		status = STATUS_SUCCESS;
 		break;
 
 	default :
-		// ¶ÔÓÚÆäËûÀàĞÍµÄIRP£¬È«²¿¶¼Ö±½ÓÏÂ·¢¼´¿É¡£ 
+		// å¯¹äºå…¶ä»–ç±»å‹çš„IRPï¼Œå…¨éƒ¨éƒ½ç›´æ¥ä¸‹å‘å³å¯ã€‚ 
 		IoSkipCurrentIrpStackLocation(pIrp);
 		status = IoCallDriver(devExt->LowDevice, pIrp);
 	}
@@ -292,7 +274,7 @@ NTSTATUS PnPDispatch(PDEVICE_OBJECT pDevice, PIRP pIrp)
 }
 
 
-// ³õÊ¼»¯À©Õ¹Éè±¸
+// åˆå§‹åŒ–æ‰©å±•è®¾å¤‡
 NTSTATUS DevExtInit(PDEV_EXTENSION devExt, PDEVICE_OBJECT filterDevice, PDEVICE_OBJECT targetDevice, PDEVICE_OBJECT lowDevice)
 {
 	memset(devExt, 0, sizeof(DEV_EXTENSION));
@@ -305,18 +287,18 @@ NTSTATUS DevExtInit(PDEV_EXTENSION devExt, PDEVICE_OBJECT filterDevice, PDEVICE_
 	return STATUS_SUCCESS;
 }
 
-// ½«¹ıÂËÉè±¸°ó¶¨µ½Ä¿±êÉè±¸ÉÏ
+// å°†è¿‡æ»¤è®¾å¤‡ç»‘å®šåˆ°ç›®æ ‡è®¾å¤‡ä¸Š
 NTSTATUS AttachDevice(PDRIVER_OBJECT pDriver, PUNICODE_STRING RegPatch)
 {
 	UNICODE_STRING kbdName = RTL_CONSTANT_STRING(L"\\Driver\\Kbdclass");
 	NTSTATUS status = 0;
-	PDEV_EXTENSION devExt;			// ¹ıÂËÉè±¸µÄÀ©Õ¹Éè±¸
-	//PDEVICE_OBJECT filterDevice;	// ¹ıÂËÉè±¸ 
-	PDEVICE_OBJECT targetDevice;		// Ä¿±êÉè±¸£¨¼üÅÌÉè±¸£©
-	PDEVICE_OBJECT lowDevice;		// µ×²ãÉè±¸£¨ÏòÄ³Ò»¸öÉè±¸ÉÏ¼ÓÒ»¸öÉè±¸Ê±²»Ò»¶¨ÊÇ¼Óµ½´ËÉè±¸ÉÏ£¬¶ø¼ÓÔÚÉè±¸Õ»µÄÕ»¶¥£©
-	PDRIVER_OBJECT kbdDriver;		// ÓÃÓÚ½ÓÊÕ´ò¿ªµÄÎïÀí¼üÅÌÉè±¸
+	PDEV_EXTENSION devExt;			// è¿‡æ»¤è®¾å¤‡çš„æ‰©å±•è®¾å¤‡
+	//PDEVICE_OBJECT filterDevice;	// è¿‡æ»¤è®¾å¤‡ 
+	PDEVICE_OBJECT targetDevice;		// ç›®æ ‡è®¾å¤‡ï¼ˆé”®ç›˜è®¾å¤‡ï¼‰
+	PDEVICE_OBJECT lowDevice;		// åº•å±‚è®¾å¤‡ï¼ˆå‘æŸä¸€ä¸ªè®¾å¤‡ä¸ŠåŠ ä¸€ä¸ªè®¾å¤‡æ—¶ä¸ä¸€å®šæ˜¯åŠ åˆ°æ­¤è®¾å¤‡ä¸Šï¼Œè€ŒåŠ åœ¨è®¾å¤‡æ ˆçš„æ ˆé¡¶ï¼‰
+	PDRIVER_OBJECT kbdDriver;		// ç”¨äºæ¥æ”¶æ‰“å¼€çš„ç‰©ç†é”®ç›˜è®¾å¤‡
 
-	// »ñÈ¡¼üÅÌÇı¶¯µÄ¶ÔÏó£¬±£´æÔÚkbdDriver
+	// è·å–é”®ç›˜é©±åŠ¨çš„å¯¹è±¡ï¼Œä¿å­˜åœ¨kbdDriver
 	status = ObReferenceObjectByName(&kbdName, OBJ_CASE_INSENSITIVE, NULL, 0, *IoDriverObjectType, KernelMode, NULL, &kbdDriver);
 	if (!NT_SUCCESS(status))
 	{
@@ -325,16 +307,16 @@ NTSTATUS AttachDevice(PDRIVER_OBJECT pDriver, PUNICODE_STRING RegPatch)
 	}
 	else
 	{
-		// ½âÒıÓÃ
+		// è§£å¼•ç”¨
 		ObDereferenceObject(kbdDriver);
 	}
 
-	// »ñÈ¡¼üÅÌÇı¶¯Éè±¸Á´ÖĞµÄµÚÒ»¸öÉè±¸
+	// è·å–é”®ç›˜é©±åŠ¨è®¾å¤‡é“¾ä¸­çš„ç¬¬ä¸€ä¸ªè®¾å¤‡
 	targetDevice = kbdDriver->DeviceObject;
-	// ÏñÁ´±í²Ù×÷Ò»Ñù£¬±éÀú¼üÅÌ¼üÅÌÉè±¸Á´ÖĞµÄËùÓĞÉè±¸
+	// åƒé“¾è¡¨æ“ä½œä¸€æ ·ï¼Œéå†é”®ç›˜é”®ç›˜è®¾å¤‡é“¾ä¸­çš„æ‰€æœ‰è®¾å¤‡
 	while (targetDevice)
 	{
-		// ´´½¨Ò»¸ö¹ıÂËÉè±¸
+		// åˆ›å»ºä¸€ä¸ªè¿‡æ»¤è®¾å¤‡
 		status = IoCreateDevice(pDriver, sizeof(DEV_EXTENSION), NULL, targetDevice->DeviceType, targetDevice->Characteristics, FALSE, &filterDevice);
 		if (!NT_SUCCESS(status))
 		{
@@ -342,7 +324,7 @@ NTSTATUS AttachDevice(PDRIVER_OBJECT pDriver, PUNICODE_STRING RegPatch)
 			filterDevice = targetDevice = NULL;
 			return status;
 		}
-		// °ó¶¨£¬lowDeviceÊÇ°ó¶¨Ö®ºóµÃµ½µÄÏÂÒ»¸öÉè±¸¡£
+		// ç»‘å®šï¼ŒlowDeviceæ˜¯ç»‘å®šä¹‹åå¾—åˆ°çš„ä¸‹ä¸€ä¸ªè®¾å¤‡ã€‚
 		lowDevice = IoAttachDeviceToDeviceStack(filterDevice, targetDevice);
 		if (!lowDevice)
 		{
@@ -351,7 +333,7 @@ NTSTATUS AttachDevice(PDRIVER_OBJECT pDriver, PUNICODE_STRING RegPatch)
 			filterDevice = NULL;
 			return status;
 		}
-		// ³õÊ¼»¯Éè±¸À©Õ¹
+		// åˆå§‹åŒ–è®¾å¤‡æ‰©å±•
 		devExt = (PDEV_EXTENSION)filterDevice->DeviceExtension;
 		DevExtInit(devExt, filterDevice, targetDevice, lowDevice);
 
@@ -359,7 +341,7 @@ NTSTATUS AttachDevice(PDRIVER_OBJECT pDriver, PUNICODE_STRING RegPatch)
 		filterDevice->Characteristics = lowDevice->Characteristics;
 		filterDevice->StackSize = lowDevice->StackSize + 1;
 		filterDevice->Flags |= lowDevice->Flags & (DO_BUFFERED_IO | DO_DIRECT_IO | DO_POWER_PAGABLE);
-		// ±éÀúÏÂÒ»¸öÉè±¸
+		// éå†ä¸‹ä¸€ä¸ªè®¾å¤‡
 		targetDevice = targetDevice->NextDevice;
 	}
 	DbgPrint("[salmon]Create And Attach Finshed...");
@@ -367,24 +349,24 @@ NTSTATUS AttachDevice(PDRIVER_OBJECT pDriver, PUNICODE_STRING RegPatch)
 }
 
 
-// Çı¶¯Èë¿Úº¯Êı
+// é©±åŠ¨å…¥å£å‡½æ•°
 NTSTATUS DriverEntry(PDRIVER_OBJECT pDriver, PUNICODE_STRING RegPath)
 {
 	ULONG i;
 	NTSTATUS status = STATUS_SUCCESS;
 
-	pDriver->DriverUnload = DriverUnload;					// ×¢²áÇı¶¯Ğ¶ÔØº¯Êı
+	pDriver->DriverUnload = DriverUnload;					// æ³¨å†Œé©±åŠ¨å¸è½½å‡½æ•°
 
 	for (i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; i++)
 	{
-		pDriver->MajorFunction[i] = GeneralDispatch;		// ×¢²áÍ¨ÓÃµÄIRP·Ö·¢º¯Êı
+		pDriver->MajorFunction[i] = GeneralDispatch;		// æ³¨å†Œé€šç”¨çš„IRPåˆ†å‘å‡½æ•°
 	}
 
-	pDriver->MajorFunction[IRP_MJ_READ] = ReadDispatch;		// ×¢²á¶ÁIRP·Ö·¢º¯Êı
-	pDriver->MajorFunction[IRP_MJ_POWER] = PowerDispatch;	// ×¢²áµçÔ´IRP·Ö·¢º¯Êı
-	pDriver->MajorFunction[IRP_MJ_PNP] = PnPDispatch;		// ×¢²á¼´²å¼´ÓÃIRP·Ö·¢º¯Êı
+	pDriver->MajorFunction[IRP_MJ_READ] = ReadDispatch;		// æ³¨å†Œè¯»IRPåˆ†å‘å‡½æ•°
+	pDriver->MajorFunction[IRP_MJ_POWER] = PowerDispatch;	// æ³¨å†Œç”µæºIRPåˆ†å‘å‡½æ•°
+	pDriver->MajorFunction[IRP_MJ_PNP] = PnPDispatch;		// æ³¨å†Œå³æ’å³ç”¨IRPåˆ†å‘å‡½æ•°
 
-	AttachDevice(pDriver, RegPath);						// °ó¶¨Éè±¸
+	AttachDevice(pDriver, RegPath);						// ç»‘å®šè®¾å¤‡
 
 	return status;
 }
