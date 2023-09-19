@@ -133,6 +133,8 @@ typedef struct _KEYBOARD_STATE {
 
 KEYBOARD_STATE keyboardState = { FALSE, FALSE, FALSE };
 
+BOOLEAN Ctrl_Alt_Del = FALSE;
+
 // IRP读操作的完成回调函数
 NTSTATUS ReadComp(PDEVICE_OBJECT pDevice, PIRP pIrp, PVOID Context)
 {
@@ -149,8 +151,7 @@ NTSTATUS ReadComp(PDEVICE_OBJECT pDevice, PIRP pIrp, PVOID Context)
 
 		for (ULONG i = 0; i < keyNumber; i++)
 		{
-			//DbgPrint("[salmon]numkey:%u sancode:%x %s ", keyNumber, myData->MakeCode, myData->Flags ? "Up" : "Down");
-			DbgPrint("[salmon]numkey:%u ", keyNumber);
+			DbgPrint("[salmon]numkey:%u sancode:%x %s ", i, myData->MakeCode, myData->Flags ? "Up" : "Down");
 		}
 
 		if (myData->Flags == KEY_MAKE)
@@ -163,28 +164,42 @@ NTSTATUS ReadComp(PDEVICE_OBJECT pDevice, PIRP pIrp, PVOID Context)
 			case 0x38:
 				keyboardState.AltPressed = TRUE;		// alt键的扫描码
 				break;
-			case 0x53:
-				keyboardState.DeletePressed = TRUE;		// del键的扫描码
+			default:
+				break;
+			}
+		}
+
+		if (myData->Flags == KEY_BREAK)                // ctrl,alt,del在按下的过程中，释放了，则置为false
+		{
+			switch (myData->MakeCode)
+			{
+			case 0x1d:
+				keyboardState.CtrlPressed = FALSE;
+				break;
+			case 0x38:
+				keyboardState.AltPressed = FALSE;
 				break;
 			default:
 				break;
 			}
 		}
+
 		// 检查是否同时按下了Ctrl、Alt和Delete键
-		if (keyboardState.CtrlPressed && keyboardState.AltPressed && keyboardState.DeletePressed)
+		if (myData->Flags == KEY_MAKE && myData->MakeCode == 0x53)
 		{
-			myData->MakeCode = 0x00; // 将del按键置为无效
-			
-			DbgPrint("Ctrl+Alt+Delete 组合键已按下");
-			// 发送ctrl alt del指令给客户端
+			if (keyboardState.CtrlPressed && keyboardState.AltPressed)
+			{
 
+				myData->MakeCode = 0x00; // 将del按键置为无效
 
-			myData->MakeCode = 0x00;
-
-			//还原记录状态
-			keyboardState.CtrlPressed = FALSE;
-			keyboardState.AltPressed = FALSE;
-			keyboardState.DeletePressed = FALSE;
+				DbgPrint("[salmon]Ctrl+Alt+Delete 组合键已按下");
+				// 发送ctrl alt del指令给客户端
+				Ctrl_Alt_Del = TRUE;
+				//还原记录状态
+				keyboardState.CtrlPressed = FALSE;
+				keyboardState.AltPressed = FALSE;
+				keyboardState.DeletePressed = FALSE;
+			}
 		}
 	}
 	gKeyCount--;
