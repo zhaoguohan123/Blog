@@ -128,10 +128,9 @@ NTSTATUS GeneralDispatch(PDEVICE_OBJECT pDevice, PIRP pIrp)
 typedef struct _KEYBOARD_STATE {
 	BOOLEAN CtrlPressed;
 	BOOLEAN AltPressed;
-	BOOLEAN DeletePressed;
 } KEYBOARD_STATE, *PKEYBOARD_STATE;
 
-KEYBOARD_STATE keyboardState = { FALSE, FALSE, FALSE };
+KEYBOARD_STATE keyboardState = { FALSE, FALSE};
 
 BOOLEAN Ctrl_Alt_Del = FALSE;
 
@@ -151,7 +150,7 @@ NTSTATUS ReadComp(PDEVICE_OBJECT pDevice, PIRP pIrp, PVOID Context)
 
 		for (ULONG i = 0; i < keyNumber; i++)
 		{
-			DbgPrint("[salmon]numkey:%u sancode:%x %s ", i, myData->MakeCode, myData->Flags ? "Up" : "Down");
+			DbgPrint("[salmon]numkey:%u sancode:%x %u ", i, myData->MakeCode, myData->Flags);
 		}
 
 		if (myData->Flags == KEY_MAKE)
@@ -184,24 +183,32 @@ NTSTATUS ReadComp(PDEVICE_OBJECT pDevice, PIRP pIrp, PVOID Context)
 			}
 		}
 
-		// 检查是否同时按下了Ctrl、Alt和Delete键
-		if (myData->Flags == KEY_MAKE && myData->MakeCode == 0x53)
+		if (Ctrl_Alt_Del) 
 		{
-			if (keyboardState.CtrlPressed && keyboardState.AltPressed)
+			keyboardState.CtrlPressed = FALSE;
+			keyboardState.AltPressed = FALSE;
+			Ctrl_Alt_Del = FALSE;
+		}
+		
+		// 检查是否同时按下了Ctrl、Alt和Delete键
+		if (keyboardState.CtrlPressed && keyboardState.AltPressed)
+		{
+			// 小键盘的del按下
+			if ((myData->Flags == KEY_MAKE || myData->Flags == KEY_E0) && myData->MakeCode == 0x53)
 			{
 
 				myData->MakeCode = 0x00; // 将del按键置为无效
 
-				DbgPrint("[salmon]Ctrl+Alt+Delete 组合键已按下");
+				DbgPrint("[salmon]Ctrl+Alt+. 组合键已按下");
 				// 发送ctrl alt del指令给客户端
 				Ctrl_Alt_Del = TRUE;
 				//还原记录状态
 				keyboardState.CtrlPressed = FALSE;
 				keyboardState.AltPressed = FALSE;
-				keyboardState.DeletePressed = FALSE;
 			}
 		}
 	}
+	
 	gKeyCount--;
 	if (pIrp->PendingReturned)
 	{
