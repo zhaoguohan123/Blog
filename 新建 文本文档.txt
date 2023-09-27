@@ -1,0 +1,7 @@
+ĞéÄâ»úÖĞ£º
+bcdedit /dbgsettings serial baudrate:115200 debugport:1
+bcdedit /set testsigning on
+bcdedit /debug on
+
+ed nt!Kd_SXS_Mask 0
+ed nt!Kd_FUSION_Mask 0
