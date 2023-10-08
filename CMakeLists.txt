@@ -29,6 +29,7 @@ add_definitions(-DUNICODE -D_UNICODE -DOLDMSVCRT -DWINVER=0x0601 -DNOMINMAX)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CppDesignModel)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CommonTools)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Service)
 include_directories("C:/Boost/include/boost-1_82")
 # 引入boost库 begin
 link_directories("C:/Boost/lib")
@@ -50,8 +51,16 @@ set_target_properties(CppDesignModel PROPERTIES
 
 # ----------------------- project CppDesignModel------------------------------------------ #
 
+# ----------------------- project Service ------------------------------------------ #
+file(GLOB SERVICE_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} Service/*.cpp Service/*.h)
+source_group(Service FILES ${SERVICE_FILES})
 
+add_executable(Service ${COMMON_FILES} ${SERVICE_FILES} )
 
+set_target_properties(Service PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/Service"
+)
+# ----------------------- project Service ------------------------------------------ #
 
 # ----------------------- project CommonTools------------------------------------------ #
 file(GLOB COMMON_TOOLS_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/*.cpp CommonTools/*.h)
