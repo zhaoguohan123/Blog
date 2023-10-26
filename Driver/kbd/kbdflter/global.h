@@ -4,12 +4,14 @@
 #include <ntddk.h>
 #include <ntddkbd.h>
 
-#define CDO_SYB_NAME L"\\??\\kbd_syb"
-#define KBD_DEV_NAME L"\\kbd"
+#define CDO_SYB_NAME L"\\??\\troila_kbd_syb"
+#define KBD_DEV_NAME L"\\troila_kbd"
 
-#define IOCTL_CODE_TO_CREATE_EVENT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x912, METHOD_BUFFERED, FILE_ANY_ACCESS)
-#define IOCTL_CODE_TO_ENABLE_CAD CTL_CODE(FILE_DEVICE_UNKNOWN, 0x913, METHOD_BUFFERED, FILE_ANY_ACCESS)
-#define IOCTL_CODE_TO_DISABLE_CAD CTL_CODE(FILE_DEVICE_UNKNOWN, 0x914, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_CODE_TO_CREATE_EVENT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x912, METHOD_BUFFERED, FILE_ANY_ACCESS)       // ´´½¨ÊÂ¼þ
+#define IOCTL_CODE_TO_ENABLE_CAD CTL_CODE(FILE_DEVICE_UNKNOWN, 0x913, METHOD_BUFFERED, FILE_ANY_ACCESS)         // ¿ªÆôcadÆÁ±Î¹¦ÄÜ
+#define IOCTL_CODE_TO_DISABLE_CAD CTL_CODE(FILE_DEVICE_UNKNOWN, 0x914, METHOD_BUFFERED, FILE_ANY_ACCESS)        // ¹Ø±ÕÆÁ±Î¹¦ÄÜ
+#define IOCTL_CODE_TO_DISABLE_ALL_KEY CTL_CODE(FILE_DEVICE_UNKNOWN, 0x915, METHOD_BUFFERED, FILE_ANY_ACCESS)    // ½ûÓÃ¼üÅÌ
+#define IOCTL_CODE_TO_ENABLE_ALL_KEY CTL_CODE(FILE_DEVICE_UNKNOWN, 0x916, METHOD_BUFFERED, FILE_ANY_ACCESS)    //  È¡Ïû¼üÅÌ½ûÓÃ
 
 const static ULONG gTraceFlags = 0x00000001;
 extern POBJECT_TYPE* IoDriverObjectType;
@@ -25,8 +27,8 @@ extern POBJECT_TYPE* IoDriverObjectType;
 #define POC_NONPAGED_POOL_TAG           'Pocp'
 
 /*
-* kbdclassï¿½ï¿½DeviceExtensionï¿½á¹¹ï¿½ï¿½Ä³Ð©ï¿½ï¿½ï¿½Æ«ï¿½Æ£ï¿½
-* ï¿½ï¿½È»Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½â¼¸ï¿½ï¿½Öµï¿½ï¿½Æ«ï¿½Æ´ï¿½Windows 8 x64ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½Ç²ï¿½ï¿½ï¿½ï¿½
+* kbdclassµÄDeviceExtension½á¹¹ÌåÄ³Ð©ÏîµÄÆ«ÒÆ£¬
+* ËäÈ»Î´µ¼³ö£¬µ«Õâ¼¸¸öÖµµÄÆ«ÒÆ´ÓWindows 8 x64¿ªÊ¼£¬¶¼ÊÇ²»±äµÄ
 */
 #ifdef _WIN64
 

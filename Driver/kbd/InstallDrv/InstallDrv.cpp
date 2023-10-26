@@ -5,353 +5,181 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string>
+#include <strsafe.h>
 
-BOOL InstallDriver(LPCTSTR lpszDriverName, LPCTSTR lpszDriverPath, LPCTSTR lpszAltitude)
+void MyDebugPrintA(const char* format, ...)
 {
-    HKEY    hKey = NULL;
-    DWORD   dwData = 0;
-    BOOL    bRet = FALSE;
-    wchar_t szTempStr[MAX_PATH] = { 0 };
-    wchar_t szDriverImagePath[MAX_PATH] = { 0 };
-
-
-
-    GetFullPathName(lpszDriverPath, MAX_PATH, szDriverImagePath, NULL);
-
-    SC_HANDLE hServiceMgr = NULL;
-    SC_HANDLE hService = NULL;
-
-    do
+    if (format == NULL)
     {
-        hServiceMgr = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-        if (hServiceMgr == NULL)
-        {
-            // OpenSCManager fail
-            printf("OpenSCManager failed! errcode = %u", GetLastError());
-            break;
-        }
+        return;
+    }
+    char buffer[1024 * 4] = { "[ZGHTEST]" };
 
-        //create service
-        hService = CreateService(hServiceMgr,
-            lpszDriverName,                         // 驱动程序的在注册表中的名字
-            lpszDriverName,                         // 注册表驱动程序的DisplayName 值
-            SERVICE_ALL_ACCESS,                     // 加载驱动程序的访问权限
-            SERVICE_KERNEL_DRIVER,                  // 表示加载的服务是文件系统驱动程序
-            SERVICE_DEMAND_START,                   // 注册表驱动程序的Start 值 ,按需启动
-            SERVICE_ERROR_IGNORE,                   // 注册表驱动程序的ErrorControl 值
-            szDriverImagePath,                      // 注册表驱动程序的ImagePath 值
-            TEXT("FSFilter Activity Monitor"),      // 注册表驱动程序的Group 值
-            NULL,
-            NULL,                   // 注册表驱动程序的 DependOnService 值
-            NULL,
-            NULL);
+    va_list ap;
+    va_start(ap, format);
+    (void)StringCchVPrintfA(buffer + 9, _countof(buffer) - 9, format, ap);
+    va_end(ap);
 
-        if (hService == NULL)
+    OutputDebugStringA(buffer);
+}
+
+enum WND_CONTROL_CODE
+{
+    WND_INSTALL_DRIVER,                             //安装驱动
+    WND_DELETE_DRIVER,                              //卸载驱动
+    WND_START_DRIVER,                               //打开驱动
+    WND_STOP_DRIVER,                                //关闭驱动
+    WND_NOTIFY_INIT,                                //通知与驱动交互的程序初始化
+    WND_NOTIFY_CREATE_EVENT,                        //通知驱动创建同步事件
+    WND_NOTIFY_DISABLE_CAD,                         //禁用Ctrl+alt+del
+    WND_NOTIFY_ENABLE_CAD,                          //启用Ctrl+alt+del
+    WND_NOTIFY_DISABLE_KEYBOARD_MOUSE,              //禁用键盘鼠标
+    WND_NOTIFY_ENABLE_KEYBOARD_MOUSE,               //启用键盘鼠标
+    WND_NOTIFY_ENABLE_BLACK_SCREEN,                 //黑屏
+    WND_NOTIFY_DISABLE_BLACK_SCREEN                 //解除黑屏
+};
+
+#define NAME_CAD_EVENTA  "Global\\Troila_Kbd_fltr"
+#define NAME_CAD_EVENTW  L"Global\\Troila_Kbd_fltr"
+
+HANDLE cadEvent = NULL;
+DWORD WaitCadEventThread(LPVOID param)
+{
+    printf("WaitCadEventThread begin... \n");
+    while (TRUE)
+    {
+        DWORD dwWaitResult = WaitForSingleObject(cadEvent, INFINITE);
+        if (dwWaitResult == WAIT_OBJECT_0)
         {
-            DWORD dwRtn = GetLastError();
-            if (dwRtn != ERROR_SERVICE_EXISTS && dwRtn != ERROR_IO_PENDING)
+            MyDebugPrintA("------------------------------------------------ ctrl alt del was pressed! ------------------------------------------- \n");
+            if (!ResetEvent(cadEvent))
             {
-                printf("kbd_Driver_Service Create Faile!, GetLastError:%u \n", GetLastError());
-                break;
+                MyDebugPrintA("reset event failed  %u", GetLastError());
             }
-            printf("kbd_Driver_Service Create fail!, service exists!,GetLastError:%u \n", GetLastError());
-            break;
         }
-
-        wcscpy_s(szTempStr, _countof(szTempStr), TEXT("SYSTEM\\CurrentControlSet\\Services\\"));
-        wcscat_s(szTempStr, _countof(szTempStr), lpszDriverName);
-        wcscat_s(szTempStr, _countof(szTempStr), TEXT("\\Instances"));
-
-        if (RegCreateKeyEx(HKEY_LOCAL_MACHINE, szTempStr, 0, (LPWSTR)TEXT(""), TRUE, KEY_ALL_ACCESS, NULL, &hKey, (LPDWORD)&dwData) != ERROR_SUCCESS)
+        else
         {
-            printf("RegCreateKeyEx 1 falied!errcode = %u \n",GetLastError());
-            break;
+            MyDebugPrintA("Wait failed with error code:%u", GetLastError());
         }
 
-        // 注册表驱动程序的DefaultInstance 值 
-        wcscpy_s(szTempStr, _countof(szTempStr), lpszDriverName);
-        wcscpy_s(szTempStr, _countof(szTempStr), TEXT(" Instance"));
-        if (RegSetValueEx(hKey, TEXT("DefaultInstance"), 0, REG_SZ, (CONST BYTE*)szTempStr, (DWORD)lstrlen(szTempStr)*sizeof(WCHAR)) != ERROR_SUCCESS)
-        {
-            printf("RegSetValueEx 1 falied! errcode = %u \n", GetLastError());
-            break;
-        }
-
-        (void)RegFlushKey(hKey);
-
-        wcscpy_s(szTempStr, TEXT("SYSTEM\\CurrentControlSet\\Services\\"));
-        wcscat_s(szTempStr, lpszDriverName);
-        wcscat_s(szTempStr, TEXT("\\Instances\\"));
-        wcscat_s(szTempStr, lpszDriverName);
-        wcscat_s(szTempStr, TEXT(" Instance"));
-
-        if (RegCreateKeyEx(HKEY_LOCAL_MACHINE, szTempStr, 0, (LPWSTR)TEXT(""), TRUE, KEY_ALL_ACCESS, NULL, &hKey, (LPDWORD)&dwData) != ERROR_SUCCESS)
-        {
-            printf("RegCreateKeyEx 2 falied! errcode = %u \n", GetLastError());
-            break;
-        }
-
-        // 注册表驱动程序的Altitude 值
-        wcscpy_s(szTempStr, lpszAltitude);
-        if (RegSetValueEx(hKey, TEXT("Altitude"), 0, REG_SZ, (CONST BYTE*)szTempStr, (DWORD)lstrlen(szTempStr)*sizeof(WCHAR)) != ERROR_SUCCESS)
-        {
-            printf("RegSetValueEx 2 falied! errcode = %u \n", GetLastError());
-            break;
-        }
-
-        // 注册表驱动程序的Flags 值
-        dwData = 0x0;
-        if (RegSetValueEx(hKey, TEXT("Flags"), 0, REG_DWORD, (CONST BYTE*) & dwData, sizeof(DWORD)) != ERROR_SUCCESS)
-        {
-            printf("RegSetValueEx 3 falied! errcode = %u \n", GetLastError());
-            break;
-        }
-
-        (void)RegFlushKey(hKey);
-
-        bRet = TRUE;
-    } while (FALSE);
-
-    if (hKey)
-    {
-        (void)RegCloseKey(hKey);
-        hKey = NULL;
     }
-    if (hServiceMgr)
-    {
-        (void)CloseServiceHandle(hServiceMgr);
-        hServiceMgr = NULL;
-    }
-    if (hService)
-    {
-        (void)CloseServiceHandle(hService);
-        hService = NULL;
-    }
-    return bRet;
+    return 0;
 }
-
-BOOL StartDriver(LPCTSTR lpszDriverName)
-{
-    BOOL bRet = FALSE;
-    SC_HANDLE        schManager  = NULL;
-    SC_HANDLE        schService  = NULL;
-
-    do
-    {
-        if (NULL == lpszDriverName)
-        {
-            printf("StartDriver lpszDriverName is NULL!\n");
-            break;
-        }
-
-        schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-        if (NULL == schManager)
-        {
-            printf("StartDriver OpenSCManager failed! errcode = %u", GetLastError());
-            break;
-        }
-
-        schService = OpenService(schManager, lpszDriverName, SERVICE_ALL_ACCESS);
-        if (NULL == schService)
-        {
-            printf("StartDriver OpenService failed! errcode = %u", GetLastError());
-            break;
-        }
-
-        if (!StartService(schService, 0, NULL))
-        {
-            DWORD dwRtn = GetLastError();
-            if (dwRtn == ERROR_SERVICE_ALREADY_RUNNING)
-            {
-                // 服务已经开启
-                break;
-            }
-            printf("StartDriver StartService failed! errcode = %u", GetLastError());
-            break;
-        }
-        bRet = TRUE;
-    } while (FALSE);
-
-    if (schManager)
-    {
-        (void)CloseServiceHandle(schManager);
-        schManager = NULL;
-    }
-
-    if (schService)
-    {
-        (void)CloseServiceHandle(schService);
-        schService = NULL;
-    }
-
-    return bRet;
-}
-
-
-BOOL StopDriver(LPCTSTR lpszDriverName)
-{
-    BOOL bRet = FALSE;
-    SC_HANDLE        schManager = NULL;
-    SC_HANDLE        schService = NULL;
-    SERVICE_STATUS   svcStatus;
-
-    do
-    {
-        if (NULL == lpszDriverName)
-        {
-            printf("StopDriver lpszDriverName is NULL!\n");
-            break;
-        }
-
-        schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-        if (NULL == schManager)
-        {
-            printf("StopDriver OpenSCManager failed! errcode = %u", GetLastError());
-            break;
-        }
-
-        schService = OpenService(schManager, lpszDriverName, SERVICE_ALL_ACCESS);
-        if (NULL == schService)
-        {
-            printf("StopDriver OpenService failed! errcode = %u", GetLastError());
-            break;
-        }
-
-        if (!ControlService(schService, SERVICE_CONTROL_STOP, &svcStatus) && (svcStatus.dwCurrentState != SERVICE_STOPPED))
-        {
-            printf("StopDriver ControlService failed! errcode = %u", GetLastError());
-            break;
-        }
-
-        bRet = TRUE;
-    } while (FALSE);
-
-    if (schManager)
-    {
-        (void)CloseServiceHandle(schManager);
-        schManager = NULL;
-    }
-
-    if (schService)
-    {
-        (void)CloseServiceHandle(schService);
-        schService = NULL;
-    }
-
-    return bRet;
-}
-
-
-BOOL DeleteDriver(LPCTSTR lpszDriverName)
-{
-    BOOL bRet = FALSE;
-    SC_HANDLE        schManager = NULL;
-    SC_HANDLE        schService = NULL;
-    SERVICE_STATUS   svcStatus;
-
-    do
-    {
-        if (NULL == lpszDriverName)
-        {
-            printf("DeleteDriver lpszDriverName is NULL!\n");
-            break;
-        }
-
-        schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-        if (NULL == schManager)
-        {
-            printf("DeleteDriver OpenSCManager failed! errcode = %u", GetLastError());
-            break;
-        }
-
-        schService = OpenService(schManager, lpszDriverName, SERVICE_ALL_ACCESS);
-        if (NULL == schService)
-        {
-            printf("DeleteDriver OpenService failed! errcode = %u", GetLastError());
-            break;
-        }
-
-        if (!ControlService(schService, SERVICE_CONTROL_STOP, &svcStatus))
-        {
-            printf("DeleteDriver ControlService failed! errcode = %u", GetLastError());
-        }
-
-        // 如果服务处于关闭状态才能删除
-        if (svcStatus.dwCurrentState != SERVICE_STOPPED)
-        {
-            printf("DeleteDriver serv current status is %d", svcStatus.dwCurrentState);
-            break;
-        }
-
-        if (!DeleteService(schService))
-        {
-            printf("DeleteDriver DeleteService failed! errcode = %u", GetLastError());
-            break;
-        }
-
-    } while (FALSE);
-
-    if (schManager)
-    {
-        (void)CloseServiceHandle(schManager);
-        schManager = NULL;
-    }
-
-    if (schService)
-    {
-        (void)CloseServiceHandle(schService);
-        schService = NULL;
-    }
-
-    return bRet;
-}
-
 int main()
 {
     std::string user_input;
-    LPCTSTR lpszDriverName = TEXT("kbdflt_serv");
-    LPCTSTR lpszDriverPath = TEXT("C:\\Users\\zgh\\Desktop\\Poc.sys");
-    LPCTSTR lpszAltitude = TEXT("389992");
+    HWND wnd = NULL;
+
+    //创建同步事件
+    SECURITY_DESCRIPTOR secutityDese;
+    ::InitializeSecurityDescriptor(&secutityDese, SECURITY_DESCRIPTOR_REVISION);
+    ::SetSecurityDescriptorDacl(&secutityDese, TRUE, NULL, FALSE);
+    SECURITY_ATTRIBUTES securityAttr;
+    securityAttr.nLength = sizeof SECURITY_ATTRIBUTES;
+    securityAttr.bInheritHandle = FALSE;
+    securityAttr.lpSecurityDescriptor = &secutityDese;
+
+    cadEvent = ::CreateEvent(&securityAttr, TRUE, FALSE, NAME_CAD_EVENTW); // 这个事件是用户层创建的
+    if (cadEvent == NULL)
+    {
+        std::cout << "CreateEvent Troila_Kbd_fltr failed!, err:" << GetLastError() << std::endl;
+        return 0;
+    }
+
+    // 创建事件等待驱动触发事件
+    HANDLE waitCadEventThread_ = CreateThread(NULL, 0, WaitCadEventThread, NULL, 0, NULL);
+    if (waitCadEventThread_ == NULL)
+    {
+        printf("create WaitCadEventThread failed!");
+        return 0;
+    }
+
+    // 每隔一秒循环查找TroilaKbdWnd窗口
+    do
+    {
+        wnd = FindWindowA("TroilaKbdWnd", NULL);
+        if (wnd == NULL)
+        {
+            printf("wnd is NULL! errcode = %u \n", GetLastError());
+        }
+        else
+        {
+            printf("TroilaKbdWnd was found! \n");
+            break;
+        }
+        Sleep(1000);
+    } while (TRUE);
+
 
     while (true)
     {
-        std::cout << "输入命令, install:创建服务安装驱动 delete:删除驱动 start:启动服务加载驱动 stop:停止服务:" << std::endl;
+        if (wnd == NULL)
+        {
+            return 0;
+        }
+        std::cout << "输入命令:" << std::endl;
+        std::cout << "install:  安装驱动   delete: 删除驱动     start:  启动驱动   stop : 停止驱动" << std::endl;
+        std::cout << "init:   驱动初始化   event: 创建同步事件  discad: 禁用cad    encad : 启动cad     disable : 禁用键盘鼠标 30s后启用鼠标键盘  silence: 黑屏肃静" << std::endl;
+
         std::cin >> user_input;
 
         if (user_input == "install")
         {
-            if (InstallDriver(lpszDriverName, lpszDriverPath, lpszAltitude) == FALSE)
-            {
-                std::cout << "安装驱动失败"<<std::endl;
-            }
+            LRESULT ret =  SendMessageA(wnd, WM_MOVE, WND_INSTALL_DRIVER, NULL);
+            MyDebugPrintA("ret:%u, err %u", ret, GetLastError());
         }
 
-        //(注意：删除之前，一定要先把CreateFile打开驱动的句柄关闭，才能正确删除)
         if (user_input == "delete")
         {
-            if (DeleteDriver(lpszDriverName) == FALSE)
-            {
-                std::cout << "删除服务失败" << std::endl;
-            }
+            (void)SendMessageA(wnd, WM_MOVE, WND_DELETE_DRIVER, NULL);
         }
         
         if (user_input == "start")
         {
-            if (StartDriver(lpszDriverName) == FALSE)
-            {
-                std::cout << "启动服务失败" << std::endl;
-            }
+            (void)SendMessageA(wnd, WM_MOVE, WND_START_DRIVER, NULL);
         }
-
-        //(注意：停止之前，一定要先把CreateFile打开驱动的句柄关闭，才能正确停止)
+        
         if (user_input == "stop")
         {
-            if (StopDriver(lpszDriverName) == FALSE)
-            {
-                std::cout << "停止服务失败" << std::endl;
-            }
+            (void)SendMessageA(wnd, WM_MOVE, WND_STOP_DRIVER, NULL);
+        }
+
+        if (user_input == "event")
+        {
+            (void)SendMessageA(wnd, WM_MOVE, WND_NOTIFY_CREATE_EVENT, NULL);
+        }
+        if (user_input == "init")
+        {
+            (void)SendMessageA(wnd, WM_MOVE, WND_NOTIFY_INIT, NULL);
+        }
+
+        if (user_input == "discad")
+        {
+            (void)SendMessageA(wnd, WM_MOVE, WND_NOTIFY_DISABLE_CAD, NULL);
+        }
+
+        if (user_input == "encad")
+        {
+            (void)SendMessageA(wnd, WM_MOVE, WND_NOTIFY_ENABLE_CAD, NULL);
+        }
+
+        if (user_input == "disable")
+        {
+            printf("禁用鼠标键盘 30s 后自动解锁 \n");
+            (void)SendMessageA(wnd, WM_MOVE, WND_NOTIFY_DISABLE_KEYBOARD_MOUSE, NULL);
+            Sleep(30000);
+            printf("启用鼠标键盘 \n");
+            (void)SendMessageA(wnd, WM_MOVE, WND_NOTIFY_ENABLE_KEYBOARD_MOUSE, NULL);
+        }
+
+        if (user_input == "silence")
+        {
+            printf("黑屏 30s 后自动恢复 \n");
+            (void)SendMessageA(wnd, WM_MOVE, WND_NOTIFY_ENABLE_BLACK_SCREEN, NULL);
+            Sleep(5000);
+            printf("恢复黑屏 \n");
+            (void)SendMessageA(wnd, WM_MOVE, WND_NOTIFY_DISABLE_BLACK_SCREEN, NULL);
         }
     }
-    
 }
 

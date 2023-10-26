@@ -4,32 +4,23 @@
 
 [Version]
 Signature="$WINDOWS NT$"
-Class=Sample ; TODO: edit Class
-ClassGuid={78A1C341-4539-11d3-B88D-00C04FAD5171} ; TODO: edit ClassGuid
+Class=Keyboard ; TODO: edit Class
+ClassGuid={4D36E96B-E325-11CE-BFC1-08002BE10318} ; TODO: edit ClassGuid
 Provider=%ManufacturerName%
 CatalogFile=Poc.cat
 DriverVer= ; TODO: set DriverVer in stampinf property pages
 PnpLockDown=1
 
 [DestinationDirs]
-DefaultDestDir = 12
-Poc_Device_CoInstaller_CopyFiles = 11
+DefaultDestDir = 13
 
 ; ================= Class section =====================
-
-[ClassInstall32]
-Addreg=SampleClassReg
-
-[SampleClassReg]
-HKR,,,0,%ClassName%
-HKR,,Icon,,-5
 
 [SourceDisksNames]
 1 = %DiskName%,,,""
 
 [SourceDisksFiles]
-Poc.sys  = 1,,
-WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1 ; make sure the number matches with SourceDisksNames
+Poc.sys  = 1
 
 ;*****************************************
 ; Install Section
@@ -62,16 +53,6 @@ ServiceBinary  = %12%\Poc.sys
 ;
 ;--- Poc_Device Coinstaller installation ------
 ;
-
-[Poc_Device.NT.CoInstallers]
-AddReg=Poc_Device_CoInstaller_AddReg
-CopyFiles=Poc_Device_CoInstaller_CopyFiles
-
-[Poc_Device_CoInstaller_AddReg]
-HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
-
-[Poc_Device_CoInstaller_CopyFiles]
-WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
 
 [Poc_Device.NT.Wdf]
 KmdfService =  Poc, Poc_wdfsect

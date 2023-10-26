@@ -18,5 +18,16 @@
     <ClCompile Include="KbdClient.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="ControlDrv.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ControlDrv.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Common.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

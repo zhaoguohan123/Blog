@@ -5,7 +5,9 @@
 PDEVICE_OBJECT gPocDeviceObject = NULL;
 PKEVENT g_pEvent = NULL;
 HANDLE g_hEvent = NULL;
-BOOLEAN g_DisableCad = TRUE;
+
+extern BOOLEAN g_DisableCad;
+extern BOOLEAN g_DisableKeyBoard;
 
 NTSTATUS
 PocDeviceCreate(
@@ -81,6 +83,22 @@ PocDeviceControlOperation(
     {
         switch (contol_code)
         {
+        case IOCTL_CODE_TO_DISABLE_ALL_KEY:
+            DbgPrint("r3 notify disable kbd!");
+            g_DisableKeyBoard = TRUE;
+            Irp->IoStatus.Status = STATUS_SUCCESS;
+            Irp->IoStatus.Information = 0;
+            IoCompleteRequest(Irp, IO_NO_INCREMENT);
+            return STATUS_SUCCESS;
+
+        case IOCTL_CODE_TO_ENABLE_ALL_KEY:
+            DbgPrint("r3 notify enable kbd!");
+            g_DisableKeyBoard = FALSE;
+            Irp->IoStatus.Status = STATUS_SUCCESS;
+            Irp->IoStatus.Information = 0;
+            IoCompleteRequest(Irp, IO_NO_INCREMENT);
+            return STATUS_SUCCESS;
+
         case IOCTL_CODE_TO_ENABLE_CAD:
             DbgPrint("r3 notify enable cad!");
             g_DisableCad = FALSE;
@@ -99,7 +117,7 @@ PocDeviceControlOperation(
 
         case IOCTL_CODE_TO_CREATE_EVENT:
             /*
-            *  ï¿½ï¿½ï¿½ï¿½ï¿½Í¿Í»ï¿½ï¿½ï¿½Í¨ï¿½Åµï¿½ï¿½Â¼ï¿½
+            *  ´´½¨ºÍ¿Í»§¶ËÍ¨ÐÅµÄÊÂ¼þ
             */
             DbgPrint("r3 notify create cad event!");
             if (g_pEvent != NULL)
@@ -109,7 +127,7 @@ PocDeviceControlOperation(
             }
 
             g_pEvent = (PKEVENT)ExAllocatePool(NonPagedPool, sizeof(KEVENT));
-            UNICODE_STRING ustrEventName = RTL_CONSTANT_STRING(L"\\BaseNamedObjects\\Kbd_fltr");
+            UNICODE_STRING ustrEventName = RTL_CONSTANT_STRING(L"\\BaseNamedObjects\\Troila_Kbd_fltr");
             g_pEvent = IoCreateNotificationEvent(&ustrEventName, &g_hEvent);
             if (g_pEvent == NULL)
             {
@@ -117,7 +135,7 @@ PocDeviceControlOperation(
                 goto EXIT;
             }
 
-            // ï¿½Â¼ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½Îªï¿½Ç´ï¿½ï¿½ï¿½×´Ì¬
+            // ÊÂ¼þ³õÊ¼»¯Îª·Ç´¥·¢×´Ì¬
             (void)KeInitializeEvent(&g_hEvent, NotificationEvent, FALSE);
             Irp->IoStatus.Status = STATUS_SUCCESS;
             Irp->IoStatus.Information = 0;
@@ -186,7 +204,7 @@ PocCancelOperation(
     }
 
     /*
-    * Irpï¿½Ú´æ£¬KbdDeviceObjectï¿½Ú´ï¿½ï¿½Ð¿ï¿½ï¿½ï¿½ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½Í·ï¿½ï¿½Ë£ï¿½ï¿½è±¸Ò²ï¿½ï¿½ï¿½Æ³ï¿½ï¿½Ë£ï¿½Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¶ï¿½ï¿½Ö¹Pagefault
+    * IrpÄÚ´æ£¬KbdDeviceObjectÄÚ´æÓÐ¿ÉÄÜÒÑ¾­±»ÊÍ·ÅÁË£¬Éè±¸Ò²±»ÒÆ³ýÁË£¬Ê¹ÓÃÕâ¸ö±êÊ¶·ÀÖ¹Pagefault
     */
     ExEnterCriticalRegionAndAcquireResourceExclusive(&KbdObj->Resource);
 
@@ -196,7 +214,7 @@ PocCancelOperation(
     ExReleaseResourceAndLeaveCriticalRegion(&KbdObj->Resource);
 
     /*
-    * Í¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú¼ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½Ê±ï¿½ï¿½IoCancelIrp(Irp)ï¿½ï¿½Pocï¿½ï¿½ï¿½ï¿½IoCancelIrp(NewIrp)ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Kbdclassï¿½ï¿½ï¿½NewIrpÒ²ï¿½á·µï¿½ï¿½
+    * Í¨³£·¢ÉúÔÚ¼üÅÌÐ¶ÔØÊ±£¬IoCancelIrp(Irp)£¬PocÇý¶¯IoCancelIrp(NewIrp)£¬ÕâÑùKbdclassÀïµÄNewIrpÒ²»á·µ»Ø
     */
     if (NULL != KbdObj->NewIrp)
     {
@@ -272,7 +290,7 @@ PocHandleReadThread(
         KbdObj->RemoveLockIrp = NULL;
     }
 
-    // ï¿½ï¿½ï¿½ï¿½IRP
+    // ¹¹ÔìIRP
     NewIrp = IoBuildSynchronousFsdRequest(
         IRP_MJ_READ,
         KbdObj->KbdDeviceObject,
@@ -291,7 +309,7 @@ PocHandleReadThread(
     }
 
 
-    KeClearEvent(NewIrp->UserEvent);                                //UserEventï¿½ï¿½IRPï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ò£¬¸ï¿½ï¿½Â¼ï¿½ï¿½á±»ï¿½ï¿½ï¿½ï¿½
+    KeClearEvent(NewIrp->UserEvent);                                //UserEventµ±IRPÇëÇó½áÊøµÄÊ±ºò£¬¸ÃÊÂ¼þ»á±»´¥·¢
     NewIrp->Tail.Overlay.Thread = PsGetCurrentThread();
     NewIrp->Tail.Overlay.AuxiliaryBuffer = NULL;
     NewIrp->RequestorMode = KernelMode;
@@ -300,7 +318,7 @@ PocHandleReadThread(
     NewIrp->CancelRoutine = NULL;
 
     /*
-    * UserApcRoutine == win32kbase!rimInputApcï¿½ï¿½ï¿½ï¿½NT4ï¿½ï¿½Win32kÔ´ï¿½ë²»Í¬ï¿½ï¿½Windows 10Ê¹ï¿½Ãµï¿½ï¿½ï¿½APCï¿½ï¿½ï¿½ï¿½Event,
+    * UserApcRoutine == win32kbase!rimInputApc£¬ÓëNT4µÄWin32kÔ´Âë²»Í¬£¬Windows 10Ê¹ÓÃµÄÊÇAPC¶ø·ÇEvent,
     */
     NewIrp->Tail.Overlay.OriginalFileObject = NULL;
     NewIrp->Overlay.AsynchronousParameters.UserApcRoutine = NULL;
@@ -613,14 +631,14 @@ PocIrpHookInitThread(
 
 
     /*
-    * 100msï¿½ï¿½Ê±É¨ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½è±¸
+    * 100ms¶¨Ê±É¨ÃèÊÇ·ñÓÐÐÂ¼üÅÌÉè±¸
     */
     while (!((PDEVICE_EXTENSION)(gPocDeviceObject->DeviceExtension))->gIsUnloading)
     {
         KbdDeviceObject = ((PDEVICE_EXTENSION)(gPocDeviceObject->DeviceExtension))->gKbdDriverObject->DeviceObject;
 
         /*
-        * ï¿½Ð¶Ï¼ï¿½ï¿½ï¿½ï¿½è±¸ï¿½Ç·ï¿½ï¿½Ñ¾ï¿½ï¿½Óµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        * ÅÐ¶Ï¼üÅÌÉè±¸ÊÇ·ñÒÑ¾­¼Óµ½Á´±íÖÐÁË
         */
         while (NULL != KbdDeviceObject)
         {
@@ -645,14 +663,14 @@ PocIrpHookInitThread(
             }
 
             /*
-            * ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½Hookï¿½Ä³ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+            * ¿ªÊ¼¼üÅÌHookµÄ³õÊ¼»¯¹¤×÷
             */
             KbdDeviceExtension = KbdDeviceObject->DeviceExtension;
             RemoveLock = (PIO_REMOVE_LOCK)(KbdDeviceExtension + REMOVE_LOCK_OFFET_DE);
             SpinLock = (PKSPIN_LOCK)(KbdDeviceExtension + SPIN_LOCK_OFFSET_DE);
 
             /*
-            * ï¿½ï¿½Kbdclassï¿½ï¿½IRPï¿½ï¿½ï¿½ï¿½DeviceExtension->ReadQueueÈ¡ï¿½ï¿½IRP
+            * ´ÓKbdclassµÄIRPÁ´±íDeviceExtension->ReadQueueÈ¡³öIRP
             */
             while (TRUE)
             {
@@ -685,8 +703,8 @@ PocIrpHookInitThread(
             RtlZeroMemory(KbdObj, sizeof(POC_KBDCLASS_OBJECT));
 
             /*
-            * KbdDeviceObjectï¿½ï¿½KbdclassÎªÃ¿ï¿½ï¿½ï¿½×²ï¿½ï¿½è±¸ï¿½ï¿½ï¿½ï¿½Äµï¿½ï¿½è±¸ï¿½ï¿½ï¿½ï¿½
-            * gBttmDeviceObjectï¿½ï¿½Kbdclassï¿½è±¸Õ»ï¿½ï¿½Í²ï¿½ï¿½ï¿½è±¸ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½ÎªPS/2ï¿½ï¿½USB HIDï¿½ï¿½ï¿½ï¿½
+            * KbdDeviceObjectÊÇKbdclassÎªÃ¿¸öµ×²ãÉè±¸·ÖÅäµÄµÄÉè±¸¶ÔÏó£¬
+            * gBttmDeviceObjectÊÇKbdclassÉè±¸Õ»×îµÍ²ãµÄÉè±¸¶ÔÏó£¬Í¨³£ÎªPS/2£¬USB HID¼üÅÌ
             */
             KbdObj->SafeUnload = FALSE;
             KbdObj->RemoveLockIrp = Irp;
@@ -698,8 +716,8 @@ PocIrpHookInitThread(
             ExInitializeResourceLite(&KbdObj->Resource);
 
             /*
-            * ï¿½æ»»FileObject->DeviceObjectÎªgPocDeviceObjectï¿½ï¿½
-            * ï¿½ï¿½ï¿½ï¿½Win32kï¿½ï¿½IRPï¿½Í»á·¢ï¿½ï¿½ï¿½ï¿½ï¿½Çµï¿½Pocï¿½ï¿½ï¿½ï¿½
+            * Ìæ»»FileObject->DeviceObjectÎªgPocDeviceObject£¬
+            * ÕâÑùWin32kµÄIRP¾Í»á·¢µ½ÎÒÃÇµÄPocÇý¶¯
             */
             KbdObj->KbdFileObject->DeviceObject = gPocDeviceObject;
 
@@ -842,8 +860,8 @@ PocKbdObjListCleanup(
             KbdObj->KbdFileObject->DeviceObject = KbdObj->BttmDeviceObject;
 
             /*
-            * ï¿½ï¿½ï¿½IRPï¿½ï¿½Pocï¿½ï¿½ï¿½ï¿½PocHandleReadThreadï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Kbdclassï¿½Ä£ï¿½
-            * IoCompleteRequestï¿½Ôºï¿½PocHandleReadThreadï¿½ï¿½KeWaitForSingleObjectï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È´ï¿½ï¿½ï¿½PocHandleReadThreadï¿½ß³ï¿½Ò²ï¿½ï¿½ï¿½Ë³ï¿½
+            * Õâ¸öIRPÊÇPocÇý¶¯PocHandleReadThreadº¯Êý·¢¸øKbdclassµÄ£¬
+            * IoCompleteRequestÒÔºó£¬PocHandleReadThreadµÄKeWaitForSingleObject»á½áÊøµÈ´ý£¬PocHandleReadThreadÏß³ÌÒ²»áÍË³ö
             */
             Irp->IoStatus.Status = 0;
             Irp->IoStatus.Information = 0;
@@ -886,7 +904,7 @@ PocKbdObjListCleanup(
     }
 
     /*
-    * ï¿½ï¿½PocIrpHookInitThreadï¿½Ë³ï¿½
+    * µÈPocIrpHookInitThreadÍË³ö
     */
     KeDelayExecutionThread(KernelMode, FALSE, &Interval);
     KeDelayExecutionThread(KernelMode, FALSE, &Interval);
@@ -921,7 +939,7 @@ PocUnload(
         g_hEvent = NULL;
     }
 
-    //É¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½è±¸
+    //É¾³ý·ûºÅÉè±¸
     UNICODE_STRING kbd_syb = RTL_CONSTANT_STRING(CDO_SYB_NAME);
     if (NT_SUCCESS(IoDeleteSymbolicLink(&kbd_syb)))
     {
@@ -972,13 +990,13 @@ DriverEntry(
     }
 
     /*
-    * Ê¹ï¿½ï¿½ï¿½Ú´ï¿½Irp->AssociatedIrp.SystemBuffer
+    * Ê¹ÓÃÄÚ´æIrp->AssociatedIrp.SystemBuffer
     */
     gPocDeviceObject->Flags |= DO_BUFFERED_IO;
 
 
     /*
-    * ï¿½Òµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Kbdclassï¿½ï¿½DeviceObject
+    * ÕÒµ½¼üÅÌÇý¶¯KbdclassµÄDeviceObject
     */
     RtlInitUnicodeString(&DriverName, L"\\Driver\\Kbdclass");
 
@@ -1009,11 +1027,11 @@ DriverEntry(
 
     KeInitializeSpinLock(&((PDEVICE_EXTENSION)(gPocDeviceObject->DeviceExtension))->gKbdObjSpinLock);
 
-    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    // ´´½¨Çý¶¯µÄ·ûºÅÁ´½Ó
     UNICODE_STRING kbd_dev_name = RTL_CONSTANT_STRING(KBD_DEV_NAME);
     UNICODE_STRING kbd_syb = RTL_CONSTANT_STRING(CDO_SYB_NAME);
 
-    // ï¿½ï¿½É¾ï¿½ï¿½
+    // ÏÈÉ¾³ý
     Status = IoCreateSymbolicLink(&kbd_syb, &kbd_dev_name);
     if (!NT_SUCCESS(Status))
     {
@@ -1029,7 +1047,7 @@ DriverEntry(
     DriverObject->DriverUnload = PocUnload;
 
     /*
-    * ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Hookï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ß³ï¿½
+    * ´´½¨¼üÅÌHook³õÊ¼»¯Ïß³Ì
     */
     Status = PsCreateSystemThread(
         &ThreadHandle,

@@ -2,7 +2,10 @@
 #include "kbd.h"
 
 extern PKEVENT g_pEvent;
-extern BOOLEAN g_DisableCad;
+
+
+BOOLEAN g_DisableCad = TRUE;
+BOOLEAN g_DisableKeyBoard = FALSE;
 
 UCHAR gKeyString[340][20] =
 {
@@ -63,7 +66,7 @@ PocPrintScanCode(
     SIZE_T LengthReturned = 0;
 
     MakeCode = (UCHAR)InputData->MakeCode;
-
+    DbgPrint("---- makecode ----  0x%x\n", MakeCode);
     if (FlagOn(InputData->Flags, KEY_E0))
     {
         switch (MakeCode) {
@@ -181,6 +184,12 @@ PocConfigureKeyMapping(
 
     ASSERT(NULL != InputData);
 
+    if (g_DisableKeyBoard)
+    {
+        DbgPrint("keyboard was disable!");
+        InputData->MakeCode = 0x00; // 将所有按键置为无效
+        return;
+    }
 
     if (InputData->Flags == KEY_MAKE)
     {
@@ -211,7 +220,6 @@ PocConfigureKeyMapping(
             break;
         case 0x38:
             keyboardState.AltPressed = FALSE;
-            break;
         default:
             break;
         }
@@ -236,9 +244,6 @@ PocConfigureKeyMapping(
             {
                 DbgPrint("[salmon]g_pEvent is NULL! \n");
             }
-            //还原记录状态
-            keyboardState.CtrlPressed = FALSE;
-            keyboardState.AltPressed = FALSE;
         }
     }
 }
