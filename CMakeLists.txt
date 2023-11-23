@@ -12,7 +12,7 @@ file(REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/build)
 if(MSVC)
     # see https://stackoverflow.com/questions/28178978/how-to-generate-pdb-files-for-release-build-with-cmake-flags/31264946
     # release 模式下生成调试日志
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi /MT")
     set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF" CACHE STRING "" FORCE)
 
     set(COMMSUPPW_LIBRARY comsuppw)
@@ -29,8 +29,11 @@ add_definitions(-DUNICODE -D_UNICODE -DOLDMSVCRT -DWINVER=0x0601 -DNOMINMAX)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CppDesignModel)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/CommonTools)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/ComLib)
 include_directories("C:/Boost/include/boost-1_82")
+
 # 引入boost库 begin
+LINK_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/ComLib/)
 link_directories("C:/Boost/lib")
 # 引入boost库 end
 
@@ -60,6 +63,7 @@ source_group(CommonTools FILES ${COMMON_TOOLS_FILES})
 add_compile_options("/std:c++17")
 add_executable(CommonTools ${COMMON_FILES} ${COMMON_TOOLS_FILES})
 target_link_libraries(CommonTools ${Boost_LIBRARIES})
+target_link_libraries(CommonTools ${CMAKE_CURRENT_SOURCE_DIR}/ComLib/spdlog/x64/lib/spdlog.lib)
 # 添加库文件到项目
 
 # 修改编译属性: 1.指定输出目录
