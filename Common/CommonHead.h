@@ -3,16 +3,23 @@
 
 #include <Windows.h>
 #include <winternl.h>
+#include <CommCtrl.h>
+#include <TlHelp32.h> 
+#include <tchar.h> 
+#include <sstream>
+
 #include <stdio.h>
 #include <iostream>
 #include <strsafe.h>
-
 #include <vector>
-#include<string>
+#include <string>
 
-#include <boost/thread.hpp>
-#include <boost/bind.hpp>
-#include <boost/make_shared.hpp>
+
+#include "logger.h"
+
+//#include <boost/thread.hpp>
+//#include <boost/bind.hpp>
+//#include <boost/make_shared.hpp>
 
 /* 函数说明：打印日志到DebugView
 参数：

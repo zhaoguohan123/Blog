@@ -1,0 +1,42 @@
+{
+    "tasks": [
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build", // 这里应该是你的构建目录
+                "--target",
+                "clean"
+            ],
+            "problemMatcher": []
+        }
+        ,
+        {
+            "type": "cppbuild",
+            "label": "build",
+            "command": "msbuild.exe",
+            "args": [
+                "/MD",
+                "/Zi",
+                "/EHsc",
+                "/nologo",
+                "${fileDirname}\\${fileBasenameNoExtension}.exe",
+                "${file}"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$msCompile"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "调试器生成的任务。"
+        }
+    ],
+    "version": "2.0.0"
+}
