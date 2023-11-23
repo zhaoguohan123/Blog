@@ -1,0 +1,7 @@
+{
+    "cmake.configureSettings": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
+    },
+    "cmake.generator": "Ninja"
+}

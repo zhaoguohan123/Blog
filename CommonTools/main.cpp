@@ -9,7 +9,8 @@
 int main(int argc, TCHAR* argv[])
 {   
     init_logger("logs.log");
-   
+    LOGGER_INFO("main start 221");
+
     //1 . 创建服务
     //serv_opt::run_serv(argc, argv);
     
