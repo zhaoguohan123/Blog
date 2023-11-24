@@ -183,6 +183,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ControlDrv\ControlDrv.h" />
     <ClInclude Include="DriverControl.h" />
     <ClInclude Include="DriverControlDlg.h" />
     <ClInclude Include="framework.h" />
@@ -191,6 +192,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ControlDrv\ControlDrv.cpp" />
     <ClCompile Include="DriverControl.cpp" />
     <ClCompile Include="DriverControlDlg.cpp" />
     <ClCompile Include="pch.cpp">
