@@ -1,4 +1,7 @@
 #include "ControlDrv.h"
+#include "..\..\..\Common\logger.h"
+
+#pragma comment(lib, "..\\..\\ComLib\\spdlog\\x64\\lib\\spdlog.lib")
 
 ControlDrv::ControlDrv(LPCTSTR lpszDriverName, LPCTSTR lpszDriverPath, LPCTSTR lpszAltitude) :
     lpszDriverName_(lpszDriverName),
@@ -33,7 +36,7 @@ BOOL ControlDrv::Init()
             0);
 
         if (KbdDevice_ == INVALID_HANDLE_VALUE) {
-            MyDebugPrintA("无法打开设备：%u", GetLastError());
+            LOGGER_INFO("无法打开设备：{}", GetLastError());
             break;
         }
         bRet = TRUE;
@@ -52,7 +55,7 @@ BOOL ControlDrv::InstallDriver()
 
     GetFullPathName(lpszDriverPath_, MAX_PATH, szDriverImagePath, NULL);
 
-    MyDebugPrintA("szDriverImagePath is %S", szDriverImagePath);
+  //  LOGGER_INFO("szDriverImagePath is {}", szDriverImagePath);
     SC_HANDLE hServiceMgr = NULL;
     SC_HANDLE hService = NULL;
 
@@ -62,7 +65,7 @@ BOOL ControlDrv::InstallDriver()
         if (hServiceMgr == NULL)
         {
             // OpenSCManager fail
-            MyDebugPrintA("OpenSCManager failed! errcode = %u", GetLastError());
+            LOGGER_INFO("OpenSCManager failed! errcode = {}", GetLastError());
             break;
         }
 
@@ -86,10 +89,10 @@ BOOL ControlDrv::InstallDriver()
             DWORD dwRtn = GetLastError();
             if (dwRtn != ERROR_SERVICE_EXISTS && dwRtn != ERROR_IO_PENDING)
             {
-                MyDebugPrintA("kbd_Driver_Service Create Faile!, GetLastError:%u \n", GetLastError());
+                LOGGER_INFO("kbd_Driver_Service Create Faile!, GetLastError:{} \n", GetLastError());
                 break;
             }
-            MyDebugPrintA("kbd_Driver_Service Create fail!, service exists!,GetLastError:%u \n", GetLastError());
+            LOGGER_INFO("kbd_Driver_Service Create fail!, service exists!,GetLastError:{} \n", GetLastError());
         }
 
         wcscpy_s(szTempStr, _countof(szTempStr), TEXT("SYSTEM\\CurrentControlSet\\Services\\"));
@@ -98,7 +101,7 @@ BOOL ControlDrv::InstallDriver()
 
         if (RegCreateKeyEx(HKEY_LOCAL_MACHINE, szTempStr, 0, (LPWSTR)TEXT(""), TRUE, KEY_ALL_ACCESS, NULL, &hKey, (LPDWORD)&dwData) != ERROR_SUCCESS)
         {
-            MyDebugPrintA("RegCreateKeyEx 1 falied!errcode = %u \n", GetLastError());
+            LOGGER_INFO("RegCreateKeyEx 1 falied!errcode = {} \n", GetLastError());
             break;
         }
 
@@ -107,7 +110,7 @@ BOOL ControlDrv::InstallDriver()
         wcscpy_s(szTempStr, _countof(szTempStr), TEXT(" Instance"));
         if (RegSetValueEx(hKey, TEXT("DefaultInstance"), 0, REG_SZ, (CONST BYTE*)szTempStr, (DWORD)lstrlen(szTempStr) * sizeof(WCHAR)) != ERROR_SUCCESS)
         {
-            MyDebugPrintA("RegSetValueEx 1 falied! errcode = %u \n", GetLastError());
+            LOGGER_INFO("RegSetValueEx 1 falied! errcode = {} \n", GetLastError());
             break;
         }
 
@@ -121,7 +124,7 @@ BOOL ControlDrv::InstallDriver()
 
         if (RegCreateKeyEx(HKEY_LOCAL_MACHINE, szTempStr, 0, (LPWSTR)TEXT(""), TRUE, KEY_ALL_ACCESS, NULL, &hKey, (LPDWORD)&dwData) != ERROR_SUCCESS)
         {
-            MyDebugPrintA("RegCreateKeyEx 2 falied! errcode = %u \n", GetLastError());
+            LOGGER_INFO("RegCreateKeyEx 2 falied! errcode = {} \n", GetLastError());
             break;
         }
 
@@ -129,7 +132,7 @@ BOOL ControlDrv::InstallDriver()
         wcscpy_s(szTempStr, lpszAltitude_);
         if (RegSetValueEx(hKey, TEXT("Altitude"), 0, REG_SZ, (CONST BYTE*)szTempStr, (DWORD)lstrlen(szTempStr) * sizeof(WCHAR)) != ERROR_SUCCESS)
         {
-            MyDebugPrintA("RegSetValueEx 2 falied! errcode = %u \n", GetLastError());
+            LOGGER_INFO("RegSetValueEx 2 falied! errcode = {} \n", GetLastError());
             break;
         }
 
@@ -137,7 +140,7 @@ BOOL ControlDrv::InstallDriver()
         dwData = 0x0;
         if (RegSetValueEx(hKey, TEXT("Flags"), 0, REG_DWORD, (CONST BYTE*) & dwData, sizeof(DWORD)) != ERROR_SUCCESS)
         {
-            MyDebugPrintA("RegSetValueEx 3 falied! errcode = %u \n", GetLastError());
+            LOGGER_INFO("RegSetValueEx 3 falied! errcode = {} \n", GetLastError());
             break;
         }
 
@@ -174,21 +177,21 @@ BOOL ControlDrv::StartDriver()
     {
         if (NULL == lpszDriverName_)
         {
-            MyDebugPrintA("StartDriver lpszDriverName is NULL!\n");
+            LOGGER_INFO("StartDriver lpszDriverName is NULL!\n");
             break;
         }
 
         schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
         if (NULL == schManager)
         {
-            MyDebugPrintA("StartDriver OpenSCManager failed! errcode = %u", GetLastError());
+            LOGGER_INFO("StartDriver OpenSCManager failed! errcode = {}", GetLastError());
             break;
         }
 
         schService = OpenService(schManager, lpszDriverName_, SERVICE_ALL_ACCESS);
         if (NULL == schService)
         {
-            MyDebugPrintA("StartDriver OpenService failed! errcode = %u", GetLastError());
+            LOGGER_INFO("StartDriver OpenService failed! errcode = {}", GetLastError());
             break;
         }
 
@@ -200,7 +203,7 @@ BOOL ControlDrv::StartDriver()
                 // 服务已经开启
                 break;
             }
-            MyDebugPrintA("StartDriver StartService failed! errcode = %u", GetLastError());
+            LOGGER_INFO("StartDriver StartService failed! errcode = {}", GetLastError());
             break;
         }
         bRet = TRUE;
@@ -238,27 +241,27 @@ BOOL ControlDrv::StopDriver()
     {
         if (NULL == lpszDriverName_)
         {
-            MyDebugPrintA("StopDriver lpszDriverName_ is NULL!\n");
+            LOGGER_INFO("StopDriver lpszDriverName_ is NULL!\n");
             break;
         }
 
         schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
         if (NULL == schManager)
         {
-            MyDebugPrintA("StopDriver OpenSCManager failed! errcode = %u", GetLastError());
+            LOGGER_INFO("StopDriver OpenSCManager failed! errcode = {}", GetLastError());
             break;
         }
 
         schService = OpenService(schManager, lpszDriverName_, SERVICE_ALL_ACCESS);
         if (NULL == schService)
         {
-            MyDebugPrintA("StopDriver OpenService failed! errcode = %u", GetLastError());
+            LOGGER_INFO("StopDriver OpenService failed! errcode = {}", GetLastError());
             break;
         }
 
         if (!ControlService(schService, SERVICE_CONTROL_STOP, &svcStatus) && (svcStatus.dwCurrentState != SERVICE_STOPPED))
         {
-            MyDebugPrintA("StopDriver ControlService failed! errcode = %u", GetLastError());
+            LOGGER_INFO("StopDriver ControlService failed! errcode = {}", GetLastError());
             break;
         }
 
@@ -297,39 +300,39 @@ BOOL ControlDrv::DeleteDriver()
     {
         if (NULL == lpszDriverName_)
         {
-            MyDebugPrintA("DeleteDriver lpszDriverName is NULL!\n");
+            LOGGER_INFO("DeleteDriver lpszDriverName is NULL!\n");
             break;
         }
 
         schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
         if (NULL == schManager)
         {
-            MyDebugPrintA("DeleteDriver OpenSCManager failed! errcode = %u", GetLastError());
+            LOGGER_INFO("DeleteDriver OpenSCManager failed! errcode = {}", GetLastError());
             break;
         }
 
         schService = OpenService(schManager, lpszDriverName_, SERVICE_ALL_ACCESS);
         if (NULL == schService)
         {
-            MyDebugPrintA("DeleteDriver OpenService failed! errcode = %u", GetLastError());
+            LOGGER_INFO("DeleteDriver OpenService failed! errcode = {}", GetLastError());
             break;
         }
 
         if (!ControlService(schService, SERVICE_CONTROL_STOP, &svcStatus))
         {
-            MyDebugPrintA("DeleteDriver ControlService failed! errcode = %u", GetLastError());
+            LOGGER_INFO("DeleteDriver ControlService failed! errcode = {}", GetLastError());
         }
 
         // 如果服务处于关闭状态才能删除
         if (svcStatus.dwCurrentState != SERVICE_STOPPED)
         {
-            MyDebugPrintA("DeleteDriver serv current status is %d", svcStatus.dwCurrentState);
+            LOGGER_INFO("DeleteDriver serv current status is {}", svcStatus.dwCurrentState);
             break;
         }
 
         if (!DeleteService(schService))
         {
-            MyDebugPrintA("DeleteDriver DeleteService failed! errcode = %u", GetLastError());
+            LOGGER_INFO("DeleteDriver DeleteService failed! errcode = {}", GetLastError());
             break;
         }
         bRet = TRUE;
@@ -353,7 +356,7 @@ BOOL ControlDrv::DeleteDriver()
 
 VOID ControlDrv::SendCmdToDrv(DWORD dwCode)
 {
-    MyDebugPrintA("SendCmdToDrv cmd is %d", dwCode);
+    LOGGER_INFO("SendCmdToDrv cmd is {}", dwCode);
 
 
     DWORD uRetBytes = 0;
@@ -371,7 +374,7 @@ VOID ControlDrv::SendCmdToDrv(DWORD dwCode)
             &uRetBytes,
             NULL))
         {
-            MyDebugPrintA("DeviceIoControl IOCTL_CODE_TO_CREATE_EVENT falied：%u", GetLastError());
+            LOGGER_INFO("DeviceIoControl IOCTL_CODE_TO_CREATE_EVENT falied：{}", GetLastError());
         }
         break;
 
@@ -386,7 +389,7 @@ VOID ControlDrv::SendCmdToDrv(DWORD dwCode)
             &uRetBytes,
             NULL))
         {
-            MyDebugPrintA("DeviceIoControl IOCTL_CODE_TO_DISABLE_CAD falied：%u", GetLastError());
+            LOGGER_INFO("DeviceIoControl IOCTL_CODE_TO_DISABLE_CAD falied：{}", GetLastError());
         }
         break;
 
@@ -401,12 +404,12 @@ VOID ControlDrv::SendCmdToDrv(DWORD dwCode)
             &uRetBytes,
             NULL))
         {
-            MyDebugPrintA("DeviceIoControl IOCTL_CODE_TO_ENABLE_CAD falied：%u", GetLastError());
+            LOGGER_INFO("DeviceIoControl IOCTL_CODE_TO_ENABLE_CAD falied：{}", GetLastError());
             break;
         }
         break;
     default:
-        MyDebugPrintA("unsupport contorl code!");
+        LOGGER_INFO("unsupport contorl code!");
         break;
     }
 }

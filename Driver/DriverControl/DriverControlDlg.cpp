@@ -59,6 +59,10 @@ CDriverControlDlg::CDriverControlDlg(CWnd* pParent /*=nullptr*/)
 void CDriverControlDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_BUTTON_OPEN_DRIVER, m_OpneDrvButton);
+	DDX_Control(pDX, IDC_BUTTON_CLOSE_DRV, m_CloseDrvButton);
+	DDX_Control(pDX, IDC_BUTTON_DISABLECAD, m_DisableCadButton);
+	DDX_Control(pDX, IDC_BUTTON_ENABLECAD, m_EnableCadButton);
 }
 
 BEGIN_MESSAGE_MAP(CDriverControlDlg, CDialogEx)
@@ -66,6 +70,10 @@ BEGIN_MESSAGE_MAP(CDriverControlDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BUTTON_SELECT_DRIVE, &CDriverControlDlg::OnBnClickedButtonSelectDrive)
+	ON_BN_CLICKED(IDC_BUTTON_OPEN_DRIVER, &CDriverControlDlg::OnBnClickedButtonOpenDriver)
+	ON_BN_CLICKED(IDC_BUTTON_CLOSE_DRV, &CDriverControlDlg::OnBnClickedButtonCloseDrv)
+	ON_BN_CLICKED(IDC_BUTTON_ENABLECAD, &CDriverControlDlg::OnBnClickedButtonEnablecad)
+	ON_BN_CLICKED(IDC_BUTTON_DISABLECAD, &CDriverControlDlg::OnBnClickedButtonDisablecad)
 END_MESSAGE_MAP()
 
 
@@ -100,8 +108,11 @@ BOOL CDriverControlDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
-	// TODO: 在此添加额外的初始化代码
-
+	// 先将按钮都置灰
+	m_OpneDrvButton.EnableWindow(0);
+	m_CloseDrvButton.EnableWindow(0);
+	m_DisableCadButton.EnableWindow(0);
+	m_EnableCadButton.EnableWindow(0);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -185,4 +196,42 @@ void CDriverControlDlg::OnBnClickedButtonSelectDrive()
 		// 在此处执行您想要的操作，例如打开文件、读取文件内容等
 		SetDlgItemText(IDC_STATIC_3, filePath); // 假设 IDC_STATIC3 是静态文本控件的 ID
 	}
+
+	m_OpneDrvButton.EnableWindow(1);
+	m_CloseDrvButton.EnableWindow(0);
+	m_DisableCadButton.EnableWindow(0);
+	m_EnableCadButton.EnableWindow(0);
+}
+
+
+void CDriverControlDlg::OnBnClickedButtonOpenDriver()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	m_OpneDrvButton.EnableWindow(0);
+	m_CloseDrvButton.EnableWindow(1);
+	m_DisableCadButton.EnableWindow(1);
+	m_EnableCadButton.EnableWindow(1);
+}
+
+
+void CDriverControlDlg::OnBnClickedButtonCloseDrv()
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	m_OpneDrvButton.EnableWindow(1);
+	m_CloseDrvButton.EnableWindow(0);
+	m_DisableCadButton.EnableWindow(0);
+	m_EnableCadButton.EnableWindow(0);
+}
+
+
+void CDriverControlDlg::OnBnClickedButtonEnablecad()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CDriverControlDlg::OnBnClickedButtonDisablecad()
+{
+	// TODO: 在此添加控件通知处理程序代码
 }

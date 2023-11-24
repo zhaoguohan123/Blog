@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 // CDriverControlDlg 对话框
 class CDriverControlDlg : public CDialogEx
 {
@@ -34,4 +33,12 @@ protected:
 public:
 	afx_msg void OnBnClickedButton1();
 	afx_msg void OnBnClickedButtonSelectDrive();
+	afx_msg void OnBnClickedButtonOpenDriver();
+	CButton m_OpneDrvButton;
+	afx_msg void OnBnClickedButtonCloseDrv();
+	CButton m_CloseDrvButton;
+	afx_msg void OnBnClickedButtonEnablecad();
+	afx_msg void OnBnClickedButtonDisablecad();
+	CButton m_DisableCadButton;
+	CButton m_EnableCadButton;
 };
