@@ -320,7 +320,7 @@ BOOL ControlDrv::DeleteDriver()
 
         if (!ControlService(schService, SERVICE_CONTROL_STOP, &svcStatus))
         {
-            LOGGER_INFO("DeleteDriver ControlService failed! errcode = {}", GetLastError());
+            LOGGER_INFO("Stop ControlService failed! errcode = {}", GetLastError());
         }
 
         // 如果服务处于关闭状态才能删除

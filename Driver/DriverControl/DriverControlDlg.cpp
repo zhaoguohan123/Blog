@@ -187,15 +187,19 @@ void CDriverControlDlg::OnBnClickedButtonSelectDrive()
 	// 设置初始目录为当前执行文件所在目录
 	dlg.m_ofn.lpstrInitialDir = exePath;
 
+	CString filePath;
 	// 显示文件对话框
 	if (dlg.DoModal() == IDOK)
 	{
 		// 获取选定的文件名并进行处理
-		CString filePath = dlg.GetPathName();
+		filePath = dlg.GetPathName();
 
 		// 在此处执行您想要的操作，例如打开文件、读取文件内容等
 		SetDlgItemText(IDC_STATIC_3, filePath); // 假设 IDC_STATIC3 是静态文本控件的 ID
 	}
+
+
+	m_ControlDrv = std::make_shared<ControlDrv>(L"KbdDrv", static_cast<LPCTSTR>(filePath), L"389992");
 
 	m_OpneDrvButton.EnableWindow(1);
 	m_CloseDrvButton.EnableWindow(0);
@@ -206,7 +210,11 @@ void CDriverControlDlg::OnBnClickedButtonSelectDrive()
 
 void CDriverControlDlg::OnBnClickedButtonOpenDriver()
 {
-	// TODO: 在此添加控件通知处理程序代码
+	m_ControlDrv->InstallDriver();
+	m_ControlDrv->StartDriver();
+	Sleep(1000);//等待驱动运行
+	m_ControlDrv->SendCmdToDrv(IOCTL_CODE_TO_CREATE_EVENT);
+
 	m_OpneDrvButton.EnableWindow(0);
 	m_CloseDrvButton.EnableWindow(1);
 	m_DisableCadButton.EnableWindow(1);
@@ -217,6 +225,7 @@ void CDriverControlDlg::OnBnClickedButtonOpenDriver()
 void CDriverControlDlg::OnBnClickedButtonCloseDrv()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	m_ControlDrv->StopDriver();
 
 	m_OpneDrvButton.EnableWindow(1);
 	m_CloseDrvButton.EnableWindow(0);
@@ -227,11 +236,11 @@ void CDriverControlDlg::OnBnClickedButtonCloseDrv()
 
 void CDriverControlDlg::OnBnClickedButtonEnablecad()
 {
-	// TODO: 在此添加控件通知处理程序代码
+	m_ControlDrv->SendCmdToDrv(IO_ENABLE_CAD);
 }
 
 
 void CDriverControlDlg::OnBnClickedButtonDisablecad()
-{
-	// TODO: 在此添加控件通知处理程序代码
+{ 
+	m_ControlDrv->SendCmdToDrv(IO_DISABLE_CAD);
 }
