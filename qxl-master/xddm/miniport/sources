@@ -1,0 +1,29 @@
+TARGETNAME=qxl
+TARGETPATH=obj
+TARGETTYPE=MINIPORT
+
+TARGETLIBS=$(DDK_LIB_PATH)\videoprt.lib 
+
+!if !defined(DDK_TARGET_OS) || "$(DDK_TARGET_OS)"=="Win2K"
+#
+# The driver is built in the Win2K build environment
+#
+TARGETLIBS=$(TARGETLIBS) $(DDK_LIB_PATH)\ntoskrnl.lib
+!endif
+
+
+AXP64_FLAGS=/QA21164
+
+!IFNDEF MSC_WARNING_LEVEL
+MSC_WARNING_LEVEL=/W3
+!ENDIF
+MSC_WARNING_LEVEL=$(MSC_WARNING_LEVEL) /WX
+
+INCLUDES=$(SPICE_COMMON_DIR); ..\include
+
+SOURCES=qxl.c      \
+		minimal_snprintf.c \
+		wdmhelper.c \
+        qxl.rc
+
+MISCFILES=qxl.inf

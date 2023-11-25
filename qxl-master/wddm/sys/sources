@@ -1,0 +1,8 @@
+TARGETNAME=qxlwddm
+TARGETTYPE=MINIPORT
+SOURCES=qxlwddm.c
+TARGETLIBS=$(DDK_LIB_PATH)\displib.lib \
+    $(DDK_LIB_PATH)\ntoskrnl.lib \
+    $(DDK_LIB_PATH)\hal.lib \
+    $(DDK_LIB_PATH)\libcntpr.lib
+#MAJORCOMP=ntos

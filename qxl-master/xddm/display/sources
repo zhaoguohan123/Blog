@@ -1,0 +1,34 @@
+TARGETNAME=qxldd
+TARGETPATH=obj
+TARGETTYPE=GDI_DRIVER
+
+!IFNDEF MSC_WARNING_LEVEL
+MSC_WARNING_LEVEL=/W3
+!ENDIF
+
+MSC_WARNING_LEVEL=$(MSC_WARNING_LEVEL) /WX
+
+INCLUDES=$(DDK_INC_PATH); ..\include; $(SPICE_COMMON_DIR);
+
+# todo: add ntoskrnl.lib for 2008 build
+
+TARGETLIBS = $(DDK_LIB_PATH)\ntstrsafe.lib
+
+!IFNDEF DEBUG
+MSC_OPTIMIZATION = /Ox
+!ENDIF
+
+C_DEFINES = $(C_DEFINES) /DQXLDD
+
+
+SOURCES=driver.c        \
+        rop.c           \
+        res.c           \
+        text.c          \
+        pointer.c       \
+        brush.c         \
+        mspace.c        \
+        quic.c          \
+        surface.c       \
+        driver.rc
+

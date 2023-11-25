@@ -1,0 +1,38 @@
+[Version]
+Signature = "$CHICAGO$"
+DriverVer =10/28/2012,0.0.0.1
+Provider =%RHAT%
+Class =Display
+ClassGUID = {4d36e968-e325-11ce-bfc1-08002be10318}
+
+[DestinationDirs]
+DefaultDestDir =11	; system32
+qxl.KernelMode =12	; drivers
+qxl.UserMode =11	; system32
+
+[Manufacturer]
+%RHAT% =q, NTx86
+
+[q.NTx86]
+%RHAT% %QXL% =dd.qxl, PCI\VEN_1b36&DEV_0100&SUBSYS_11001af4
+
+[dd.qxl]
+CopyFiles =qxl.KernelMode, qxl.UserMode
+
+[qxl.KernelMode]
+qxlwddm.sys
+
+[qxl.UserMode]
+qxlum.dll
+
+[SourceDisksNames]
+1 = %DiskId%
+
+[SourceDisksFiles]
+qxlwddm.sys = 1
+qxlum.dll = 1
+
+[Strings]
+RHAT ="Red Hat"
+QXL = "QXL"
+DiskId = "Windows 2000 Driver Installation Disk"

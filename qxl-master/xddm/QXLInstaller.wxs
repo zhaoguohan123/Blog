@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:difx="http://schemas.microsoft.com/wix/DifxAppExtension">
+
+  <?ifdef QXL64Bit ?>
+    <?define QXLPlatform=x64 ?>
+    <?define QXLProgramFilesFolder= ProgramFiles64Folder ?>
+    <?define QXLWin64= yes ?>
+  <?else?>
+    <?define QXLPlatform=x86 ?>
+    <?define QXLProgramFilesFolder= ProgramFilesFolder ?>
+    <?define QXLWin64= no ?>
+  <?endif?>
+
+  <Product
+    Name="Red Hat QXL GPU"
+    Id="*"
+    UpgradeCode="{67F4CBB7-2CC5-4155-833D-425EA317DE53}"
+    Manufacturer="Red Hat, Inc."
+    Version="$(var.QXLVersion)"
+    Language="1033">
+    <Package
+      Manufacturer="Red Hat, Inc."
+      InstallerVersion="200"
+      Languages="1033"
+      Platform="$(var.QXLPlatform)"
+      Compressed="yes"
+      InstallScope="perMachine"
+      InstallPrivileges="elevated" />
+
+    <?if $(var.QXLPlatform) = x86 ?>
+      <Condition Message="Error: 32-bit version of QXL can not be installed on 64-bit Windows.">
+          <![CDATA[Not VersionNT64]]>
+      </Condition>
+    <?endif?>
+
+    <Condition Message="QXL is only supported on Windows 7 or Windows Server 2008 R2.">
+      <![CDATA[Installed OR (VersionNT = 601)]]>
+    </Condition>
+
+    <Media Id="1" Cabinet="QXL$(var.QXLVersion).cab" EmbedCab="yes" />
+
+    <Property Id="PREVIOUSVERSIONSINSTALLED" Secure="yes" />
+    <Upgrade Id="{67F4CBB7-2CC5-4155-833D-425EA317DE53}">
+      <UpgradeVersion
+        Minimum="0.0.0.0" Maximum="$(var.QXLVersion)"
+        Property="PREVIOUSVERSIONSINSTALLED"
+        IncludeMinimum="yes" IncludeMaximum="no" />
+
+      <UpgradeVersion
+        Minimum="$(var.QXLVersion)" Maximum="99.99.99.99"
+        Property="NEWERVERSIONINSTALLED"
+        IncludeMinimum="no" IncludeMaximum="yes" />
+    </Upgrade>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="$(var.QXLProgramFilesFolder)">
+        <Directory Id="MANUFACTURERFOLDER" Name="Red Hat">
+          <Directory Id="QXL_Directory" Name="QXL">
+
+            <Component Id="QXL_7" Guid="{B939852D-7780-489A-A19E-8170DB85F61C}" Win64="$(var.QXLWin64)">
+              <File Id="qxl.sys" Name="qxl.sys" Source="qxl.sys" Vital="yes" KeyPath="yes" DiskId="1" ProcessorArchitecture="$(var.QXLPlatform)"/>
+              <File Id="qxl.inf" Name="qxl.inf" Source="qxl.inf" Vital="yes" KeyPath="no" DiskId="1" ProcessorArchitecture="$(var.QXLPlatform)"/>
+              <File Id="qxl.cat" Name="qxl.cat" Source="qxl.cat" Vital="yes" KeyPath="no" DiskId="1" ProcessorArchitecture="$(var.QXLPlatform)"/>
+              <File Id="qxldd.dll" Name="qxldd.dll" Source="qxldd.dll" Vital="yes" KeyPath="no" DiskId="1" ProcessorArchitecture="$(var.QXLPlatform)"/>
+              <difx:Driver AddRemovePrograms="no" PlugAndPlayPrompt="no" />
+            </Component>
+
+          </Directory>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <CustomAction Id="PreventDowngrading"
+              Error="Error: Newer version of QXL is already installed.">
+    </CustomAction>
+
+    <InstallExecuteSequence>
+      <RemoveExistingProducts After="InstallInitialize">PREVIOUSVERSIONSINSTALLED&lt;&gt;""</RemoveExistingProducts>
+      <Custom Action="PreventDowngrading" After="FindRelatedProducts">NEWERVERSIONINSTALLED&lt;&gt;"" AND NOT Installed</Custom>
+    </InstallExecuteSequence>
+
+    <Feature Id="ProductFeature" Title="QXL" Level="1">
+      <ComponentRef Id="QXL_7" />
+    </Feature>
+
+  </Product>
+</Wix>
