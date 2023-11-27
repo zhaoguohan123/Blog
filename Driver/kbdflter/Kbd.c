@@ -66,7 +66,7 @@ PocPrintScanCode(
     SIZE_T LengthReturned = 0;
 
     MakeCode = (UCHAR)InputData->MakeCode;
-    DbgPrint("---- makecode ----  0x%x\n", MakeCode);
+
     if (FlagOn(InputData->Flags, KEY_E0))
     {
         switch (MakeCode) {

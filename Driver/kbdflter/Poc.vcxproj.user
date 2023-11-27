@@ -11,6 +11,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DbgengKernelMachineName>Vmware Windows10 x64</DbgengKernelMachineName>
-    <SignMode>TestSign</SignMode>
+    <SignMode>Off</SignMode>
   </PropertyGroup>
 </Project>
