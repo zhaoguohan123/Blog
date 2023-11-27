@@ -1,7 +1,7 @@
 #include "ControlDrv.h"
-#include "..\..\..\Common\logger.h"
 
-#pragma comment(lib, "..\\..\\ComLib\\spdlog\\x64\\lib\\spdlog.lib")
+
+
 
 ControlDrv::ControlDrv(LPCTSTR lpszDriverName, LPCTSTR lpszDriverPath, LPCTSTR lpszAltitude) :
     lpszDriverName_(lpszDriverName),
@@ -27,7 +27,7 @@ BOOL ControlDrv::Init()
     do
     {
         // 打开设备
-        KbdDevice_ = CreateFile(L"\\\\.\\troila_kbd_syb",
+        KbdDevice_ = CreateFile(L"\\\\.\\kbd_syb",
             GENERIC_READ | GENERIC_WRITE,
             0,
             NULL,

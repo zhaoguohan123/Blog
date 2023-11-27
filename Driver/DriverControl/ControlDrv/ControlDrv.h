@@ -2,6 +2,7 @@
 #include <strsafe.h>
 #include <iostream>
 #include <Windows.h>
+#include "..\..\..\Common\logger.h"
 
 enum DRV_IO_CONTROL_CODE
 {

@@ -77,6 +77,61 @@ BEGIN_MESSAGE_MAP(CDriverControlDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 
+
+DWORD WINAPI WaitCadEventThread(LPVOID param)
+{
+	CDriverControlDlg* pThis = (CDriverControlDlg*)param;
+	
+	LOGGER_INFO("WaitCadEventThread begin...");
+	while (TRUE)
+	{
+		DWORD dwWaitResult = WaitForSingleObject(pThis->cadEvent, INFINITE);
+		if (dwWaitResult == WAIT_OBJECT_0)
+		{
+			LOGGER_INFO("------------------------------------------------ ctrl alt del was pressed! -------------------------------------------");
+			if (!ResetEvent(pThis->cadEvent))
+			{
+				LOGGER_ERROR("reset event failed {}", GetLastError());
+			}
+		}
+		else
+		{
+			LOGGER_ERROR("Wait failed with error code:{}", GetLastError());
+		}
+
+	}
+	return 0;
+}
+
+void CDriverControlDlg::CreateEvents()
+{
+	// 创建同步事件
+	SECURITY_DESCRIPTOR secutityDese;
+	::InitializeSecurityDescriptor(&secutityDese, SECURITY_DESCRIPTOR_REVISION);
+	::SetSecurityDescriptorDacl(&secutityDese, TRUE, NULL, FALSE);
+
+	SECURITY_ATTRIBUTES securityAttr;
+	securityAttr.nLength = sizeof SECURITY_ATTRIBUTES;
+	securityAttr.bInheritHandle = FALSE;
+	securityAttr.lpSecurityDescriptor = &secutityDese;
+
+	cadEvent = ::CreateEvent(&securityAttr, TRUE, FALSE, NAME_CAD_EVENTW); // 这个事件是用户层创建的
+	if (cadEvent == NULL)
+	{
+		LOGGER_ERROR("CreateEvent Kbd_fltr failed!, err: {}", GetLastError());
+		return;
+	}
+
+	// 创建事件等待驱动触发事件
+	DWORD dwThreadId = 0;
+	HANDLE waitCadEventThread_ = CreateThread(NULL, 0, WaitCadEventThread, this, 0, (LPDWORD)&dwThreadId);
+	if (waitCadEventThread_ == NULL)
+	{
+		LOGGER_ERROR("create WaitCadEventThread failed!");
+		return;
+	}
+}
+
 // CDriverControlDlg 消息处理程序
 
 BOOL CDriverControlDlg::OnInitDialog()
@@ -113,6 +168,13 @@ BOOL CDriverControlDlg::OnInitDialog()
 	m_CloseDrvButton.EnableWindow(0);
 	m_DisableCadButton.EnableWindow(0);
 	m_EnableCadButton.EnableWindow(0);
+
+
+	HANDLE cadEvent = NULL;
+
+
+
+
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -210,8 +272,12 @@ void CDriverControlDlg::OnBnClickedButtonSelectDrive()
 
 void CDriverControlDlg::OnBnClickedButtonOpenDriver()
 {
+	// 安装驱动
 	m_ControlDrv->InstallDriver();
+	// 启动驱动
 	m_ControlDrv->StartDriver();
+
+	//通知驱动创建和用户层同步的事件
 	Sleep(1000);//等待驱动运行
 	m_ControlDrv->SendCmdToDrv(IOCTL_CODE_TO_CREATE_EVENT);
 
