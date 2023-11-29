@@ -127,7 +127,7 @@ PocDeviceControlOperation(
             }
 
             g_pEvent = (PKEVENT)ExAllocatePool(NonPagedPool, sizeof(KEVENT));
-            UNICODE_STRING ustrEventName = RTL_CONSTANT_STRING(L"\\BaseNamedObjects\\Troila_Kbd_fltr");
+            UNICODE_STRING ustrEventName = RTL_CONSTANT_STRING(L"\\BaseNamedObjects\\Kbd_fltr");
             g_pEvent = IoCreateNotificationEvent(&ustrEventName, &g_hEvent);
             if (g_pEvent == NULL)
             {

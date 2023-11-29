@@ -22,6 +22,22 @@ int main(int argc, TCHAR* argv[])
     //DestructWithThreadNotEnd::main();
     
     //HIDE_TRAY_ICON::DeleteTrayIcon();
+    char j = 'A';
+    for (auto i = L'A';  i <= L'Z'; i++)
+    {
+        if (utils::IsDriveExists(i))
+        {
+            LOGGER_INFO("{}: is exists", j);
+        }
+        j++;
+    }
+    HWND hwnd = FindWindow(L"Shell_TrayWnd", nullptr);
+    if (hwnd != nullptr) {
+        SendMessage(hwnd, WM_DEVICECHANGE, 0x8000, 0); // 发送 WM_DEVICECHANGE 消息
+    }else
+    {
+        LOGGER_ERROR("hwnd is nullptr");
+    }
     return 0;
 }
 

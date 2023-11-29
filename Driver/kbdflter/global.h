@@ -4,8 +4,8 @@
 #include <ntddk.h>
 #include <ntddkbd.h>
 
-#define CDO_SYB_NAME L"\\??\\troila_kbd_syb"
-#define KBD_DEV_NAME L"\\troila_kbd"
+#define CDO_SYB_NAME L"\\??\\KbdDrv"
+#define KBD_DEV_NAME L"\\KbdDrv"
 
 #define IOCTL_CODE_TO_CREATE_EVENT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x912, METHOD_BUFFERED, FILE_ANY_ACCESS)       // 创建事件
 #define IOCTL_CODE_TO_ENABLE_CAD CTL_CODE(FILE_DEVICE_UNKNOWN, 0x913, METHOD_BUFFERED, FILE_ANY_ACCESS)         // 开启cad屏蔽功能

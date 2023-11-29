@@ -4,7 +4,7 @@
 
 namespace utils 
 {
-    /* ¸ù¾İ½ø³ÌÃû³Æ²éÕÒ½ø³ÌID */
+    /* æ ¹æ®è¿›ç¨‹åè·å–è¿›ç¨‹ID */
     DWORD GetProcIdFromProcName(WCHAR* name)
     {
         HANDLE  hsnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -28,7 +28,7 @@ namespace utils
             flag = Process32Next(hsnapshot, &pe);
         }
 
-        // fix me: Ó³Èëboost¿âÖ®ºó½«¿í×Ö½Ú×ª³É¶à×Ö½ÚÊä³öÈÕÖ¾
+        // fix me: å¼•å…¥booståº“åï¼Œå°†å®½å­—ç¬¦è½¬æ¢ä¸ºå¤šå­—ç¬¦
         LOGGER_ERROR("Not found {} process", "zgh");
 
         if (hsnapshot)
@@ -39,24 +39,24 @@ namespace utils
         return 0;
     }
 
-    /*»ñÈ¡exeËùÔÚµÄÄ¿Â¼*/
+    /*è·å–äºŒè¿›åˆ¶æ‰€åœ¨è·¯å¾„*/
     std::string GetExePath()
     {
         char szFilePath[MAX_PATH + 1] = { 0 };
         GetModuleFileNameA(NULL, szFilePath, MAX_PATH);
         /*
-        strrchr:º¯Êı¹¦ÄÜ£º²éÕÒÒ»¸ö×Ö·ûcÔÚÁíÒ»¸ö×Ö·û´®strÖĞÄ©´Î³öÏÖµÄÎ»ÖÃ£¨Ò²¾ÍÊÇ´ÓstrµÄÓÒ²à¿ªÊ¼²éÕÒ×Ö·ûcÊ×´Î³öÏÖµÄÎ»ÖÃ£©£¬
-        ²¢·µ»ØÕâ¸öÎ»ÖÃµÄµØÖ·¡£Èç¹ûÎ´ÄÜÕÒµ½Ö¸¶¨×Ö·û£¬ÄÇÃ´º¯Êı½«·µ»ØNULL¡£
-        Ê¹ÓÃÕâ¸öµØÖ··µ»Ø´Ó×îºóÒ»¸ö×Ö·ûcµ½strÄ©Î²µÄ×Ö·û´®¡£
+        strrchr:å‡½æ•°åŠŸèƒ½ï¼šæŸ¥æ‰¾ä¸€ä¸ªå­—ç¬¦cåœ¨å¦ä¸€ä¸ªå­—ç¬¦ä¸²strä¸­æœ«æ¬¡å‡ºç°çš„ä½ç½®ï¼ˆä¹Ÿå°±æ˜¯ä»strçš„å³ä¾§å¼€å§‹æŸ¥æ‰¾å­—ç¬¦cé¦–æ¬¡å‡ºç°çš„ä½ç½®ï¼‰ï¼Œ
+        å¹¶è¿”å›è¿™ä¸ªä½ç½®çš„åœ°å€ã€‚å¦‚æœæœªèƒ½æ‰¾åˆ°æŒ‡å®šå­—ç¬¦ï¼Œé‚£ä¹ˆå‡½æ•°å°†è¿”å›NULLã€‚
+        ä½¿ç”¨è¿™ä¸ªåœ°å€è¿”å›ä»æœ€åä¸€ä¸ªå­—ç¬¦cåˆ°stræœ«å°¾çš„å­—ç¬¦ä¸²ã€‚
         */
-        (strrchr(szFilePath, '\\'))[0] = 0; // É¾³ıÎÄ¼şÃû£¬Ö»»ñµÃÂ·¾¶×Ö´®//
+        (strrchr(szFilePath, '\\'))[0] = 0; //  åˆ é™¤æ–‡ä»¶åï¼Œåªè·å¾—è·¯å¾„å­—ä¸²//
         std::string path = szFilePath;
         return path;
     }
 
 
-    /*ÀàËÆ 3.2.1.2569 µã·ÖÊ®½øÖÆµÄ×Ö·û´®±È½Ï*/
-    //±È½ÏÁ½¸ö°æ±¾v1=v2 ·µ»Ø0£¬v1>v2·µ»Ø1£¬v1<v2·µ»Ø-1
+    /*ç±»ä¼¼ 3.2.1.2569 ç‚¹åˆ†åè¿›åˆ¶çš„å­—ç¬¦ä¸²æ¯”è¾ƒ*/
+    //æ¯”è¾ƒä¸¤ä¸ªç‰ˆæœ¬v1=v2 è¿”å›0ï¼Œv1>v2è¿”å›1ï¼Œv1<v2è¿”å›-1
     int compareVersions(const std::string& v1, const std::string& v2) {
         std::istringstream iss1(v1);
         std::istringstream iss2(v2);
@@ -77,16 +77,33 @@ namespace utils
             }
 
         }
-        return 0; // Á½¸ö°æ±¾ºÅÏàµÈ
+        return 0; // ä¸¤ä¸ªç‰ˆæœ¬å·ç›¸ç­‰
     }
 
     
-    /*ÅĞ¶ÏÎÄ¼şÊÇ·ñ´æÔÚ£º 1£©×¢ÒâszPath ĞèÒª´«Èë¾ø¶ÔÂ·¾¶*/
+     /*åˆ¤æ–­æ–‡ä»¶æ˜¯å¦å­˜åœ¨ï¼š 1ï¼‰æ³¨æ„szPath éœ€è¦ä¼ å…¥ç»å¯¹è·¯å¾„*/
     BOOL FileExists(LPCTSTR szPath)
     {
         DWORD dwAttrib = GetFileAttributes(szPath);
 
         return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
     }
+
+    /*windows åˆ¤æ–­ç›˜ç¬¦æ˜¯å¦å­˜åœ¨*/
+    BOOL IsDriveExists(const wchar_t driveLetter) 
+    {
+        DWORD drivesMask = GetLogicalDrives();
+        if(drivesMask == 0) {
+            LOGGER_ERROR("GetLogicalDrives failed!errcode : {}", GetLastError());
+            return FALSE;
+        }
+        int driveIndex = static_cast<int>(driveLetter - L'A');
+
+        if ((drivesMask >> driveIndex) & 1) {
+            return TRUE; // ç›˜ç¬¦å­˜åœ¨
+        } else {
+            return FALSE; // ç›˜ç¬¦ä¸å­˜åœ¨
+    }
+}
 }
 #endif
