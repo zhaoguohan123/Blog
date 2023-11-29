@@ -99,11 +99,101 @@ namespace utils
         }
         int driveIndex = static_cast<int>(driveLetter - L'A');
 
-        if ((drivesMask >> driveIndex) & 1) {
+        if ((drivesMask >> driveIndex) & 1) 
+        {
             return TRUE; // 盘符存在
-        } else {
+        }
+         else 
+        {
             return FALSE; // 盘符不存在
+        }
     }
-}
+
+    /*根据进程名判断进程是否存在*/
+    BOOL is_process_running(TCHAR * processName)
+    {
+        BOOL bRet = FALSE;
+        HANDLE hSnapshot = NULL;
+        PROCESSENTRY32 pe = { 0 };
+        pe.dwSize = sizeof(pe);
+        do
+        {
+            hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if (hSnapshot == INVALID_HANDLE_VALUE)
+            {
+                LOGGER_ERROR("CreateToolhelp32Snapshot error: {} ", GetLastError());
+                break;
+            }
+
+            if (!Process32First(hSnapshot, &pe))
+            {
+                LOGGER_ERROR("Process32First error: {}", GetLastError());
+                break;
+            }
+
+            do
+            {
+                if (_wcsicmp(pe.szExeFile, processName) == 0)
+                {
+                    bRet = TRUE;
+                    break;
+                }
+            } while (Process32Next(hSnapshot, &pe));
+
+        } while (false);
+        
+        if (hSnapshot)
+        {
+            CloseHandle(hSnapshot);
+            hSnapshot = NULL;
+        }
+        
+        return bRet;
+    }
+
+    /*打开服务*/
+    BOOL start_serv(const std::string & strSrvName)
+    {
+        BOOL bRet = false;
+        SC_HANDLE hSC = NULL;
+        SC_HANDLE hService = NULL;
+
+        do
+        {
+            hSC = OpenSCManagerA(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+            if (hSC == NULL)
+            {
+                LOGGER_ERROR("OpenSCManagerA failed! errcode {}", GetLastError());
+                break;
+            }
+
+            hService = OpenServiceA(hSC, strSrvName.c_str(), SERVICE_ALL_ACCESS);
+            if (hService == NULL)
+            {
+                LOGGER_ERROR("OpenService %s failed! errcode {}", strSrvName.c_str(), GetLastError());
+                break;
+            }
+
+            if (!StartService(hService, 0, NULL))
+            {
+                LOGGER_ERROR("StartService failed! errcode {}", GetLastError());
+                break;
+            }
+            bRet = TRUE;
+        } while (FALSE);
+
+        if (hService)
+        {
+            CloseServiceHandle(hService);
+            hService = NULL;
+        }
+        if (hSC)
+        {
+            CloseServiceHandle(hSC);
+            hSC = NULL;
+        }
+
+        return bRet;
+    }
 }
 #endif
