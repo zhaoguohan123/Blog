@@ -42,6 +42,10 @@ link_directories("C:/Boost/lib")
 file(GLOB COMMON_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} Common/*.cpp Common/*.h)
 source_group(common FILES ${COMMON_FILES})
 
+# ----------------------- Get proc info ------------------------------------------ #
+file(GLOB GET_PROC_INFO_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/GetProcInfo/*.cpp CommonTools/GetProcInfo/*.h)
+source_group(GetProcInfo FILES ${GET_PROC_INFO_FILES})
+
 # ----------------------- project CppDesignModel------------------------------------------ #
 file(GLOB CPPDESIGNMODEL_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CppDesignModel/*.cpp CppDesignModel/*.h)
 source_group(CppDesignModel FILES ${CPPDESIGNMODEL_FILES})
@@ -70,7 +74,7 @@ file(GLOB COMMON_TOOLS_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/*.
 source_group(CommonTools FILES ${COMMON_TOOLS_FILES})
 
 add_compile_options("/std:c++17")
-add_executable(CommonTools ${COMMON_FILES} ${COMMON_TOOLS_FILES})
+add_executable(CommonTools ${COMMON_FILES} ${COMMON_TOOLS_FILES} ${GET_PROC_INFO_FILES})
 target_link_libraries(CommonTools ${Boost_LIBRARIES})
 target_link_libraries(CommonTools ${CMAKE_CURRENT_SOURCE_DIR}/ComLib/spdlog/x64/lib/spdlog.lib)
 # 添加库文件到项目

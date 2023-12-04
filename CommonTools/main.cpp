@@ -4,10 +4,11 @@
 //#include "DestructWithThreadNotEnd.h"
 #include "Hide_Tray_icon.h"
 #include "utils.h"
+#include ".\GetProcInfo\GetProcInfo.h"
 
 // 创建一个服务，并在服务中输出传入的参数
 int main(int argc, TCHAR* argv[])
-{   
+{
     init_logger("logs.log");
     LOGGER_INFO("main start 221");
 
@@ -22,22 +23,10 @@ int main(int argc, TCHAR* argv[])
     //DestructWithThreadNotEnd::main();
     
     //HIDE_TRAY_ICON::DeleteTrayIcon();
-    char j = 'A';
-    for (auto i = L'A';  i <= L'Z'; i++)
-    {
-        if (utils::IsDriveExists(i))
-        {
-            LOGGER_INFO("{}: is exists", j);
-        }
-        j++;
-    }
-    HWND hwnd = FindWindow(L"Shell_TrayWnd", nullptr);
-    if (hwnd != nullptr) {
-        SendMessage(hwnd, WM_DEVICECHANGE, 0x8000, 0); // 发送 WM_DEVICECHANGE 消息
-    }else
-    {
-        LOGGER_ERROR("hwnd is nullptr");
-    }
+    GetProcInfo a;
+    a.GetAllProcInfo();
+    a.ExcludeSysProc();
+
     return 0;
 }
 
