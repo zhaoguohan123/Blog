@@ -638,7 +638,7 @@ PocIrpHookInitThread(
         KbdDeviceObject = ((PDEVICE_EXTENSION)(gPocDeviceObject->DeviceExtension))->gKbdDriverObject->DeviceObject;
 
         /*
-        * 判断键盘设备是否已经加到链表中了
+        * 判断键盘设备是否已经加到链表中了; 
         */
         while (NULL != KbdDeviceObject)
         {
@@ -996,7 +996,7 @@ DriverEntry(
 
 
     /*
-    * 找到键盘驱动Kbdclass的DeviceObject
+    * 找到键盘驱动Kbdclass的驱动对象
     */
     RtlInitUnicodeString(&DriverName, L"\\Driver\\Kbdclass");
 

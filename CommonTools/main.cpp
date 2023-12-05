@@ -7,7 +7,7 @@
 #include ".\GetProcInfo\GetProcInfo.h"
 
 #pragma comment(lib, "Version.lib")
-
+bool QueryValue(const std::string& ValueName, const std::string& szModuleName, std::string& RetStr);
 struct LANGANDCODEPAGE {
   WORD wLanguage;
   WORD wCodePage;
@@ -21,43 +21,15 @@ std::wstring GetProcessDescription(DWORD processId) {
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processId);
     if (hProcess != NULL) 
     {
-        WCHAR processPath[MAX_PATH] = { 0 };
+        char processPath[MAX_PATH] = { 0 };
         DWORD bufferSize = MAX_PATH;
 
         // 获取进程可执行文件路径
-        if (QueryFullProcessImageNameW(hProcess, 0, processPath, &bufferSize)) 
+        if (QueryFullProcessImageNameA(hProcess, 0, processPath, &bufferSize)) 
         {
-            // 获取文件版本信息
-            DWORD handle;
-            DWORD fileInfoSize = GetFileVersionInfoSizeW(processPath, &handle);
-            if (fileInfoSize > 0) 
-            {
-                std::vector<BYTE> fileInfoBuffer(fileInfoSize);
-                if (GetFileVersionInfoW(processPath, handle, fileInfoSize, &fileInfoBuffer[0])) {
-                    LPVOID fileDescription;
-                    UINT size; //
-                    if (VerQueryValueW(&fileInfoBuffer[0], L"\\StringFileInfo\\080404b0\\FileDescription", (LPVOID*)&fileDescription, &size)) 
-                    {
-                        description = reinterpret_cast<WCHAR*>(fileDescription);
-                    }else
-                    {
-                        LOGGER_ERROR("VerQueryValueW error: {}", GetLastError());
-                        if (VerQueryValueW(&fileInfoBuffer[0], L"\\StringFileInfo\\040904b0\\FileDescription", (LPVOID*)&fileDescription, &size)) 
-                        {
-                            description = reinterpret_cast<WCHAR*>(fileDescription);
-                        }else
-                        {
-                            LOGGER_ERROR("VerQueryValueW error: {}", GetLastError());
-                        }
-                    }
-                }else
-                {
-                    LOGGER_ERROR("GetFileVersionInfoW error: {}", GetLastError());
-                }
-            }else
-            {
-                LOGGER_ERROR("GetFileVersionInfoSizeW error: {}", GetLastError());
-            }
+            std::string RetStr;
+            QueryValue("FileDescription", processPath, RetStr);
+            std::cout<<"desc: "<<RetStr<<std::endl;
         }else
         {
             LOGGER_ERROR("QueryFullProcessImageNameW error: {}", GetLastError());
@@ -98,13 +70,106 @@ void ListProcessesFromWindows() {
             WCHAR windowTitle[MAX_PATH] = { 0 };
             GetWindowTextW(hwnd, windowTitle, MAX_PATH);
 
-            if (wcslen(windowTitle) > 0) {
-                //std::wcout << L"Window Title: " << windowTitle << std::endl;
-                std::wcout << L"Process ID: " << processId  << L"   " <<  L"desc:" << GetProcessDescription(processId) << std::endl;
+            if (wcslen(windowTitle) > 0){
+                std::wcout << L"Process ID: " << processId  << std::endl;
+                GetProcessDescription(processId);
                 std::wcout << L"---------------------------------" << std::endl;
             }
         }
     }
+}
+
+
+
+bool QueryValue(const std::string& ValueName, const std::string& szModuleName, std::string& RetStr)
+{
+    bool bSuccess = FALSE;
+    BYTE*  m_lpVersionData = NULL;
+    DWORD   m_dwLangCharset = 0;
+    CHAR *tmpstr = NULL;
+
+    do
+    {
+        if (!ValueName.size() || !szModuleName.size())
+        {
+            LOGGER_ERROR("ValueName or szModuleName is empty");
+            break;
+        }
+        DWORD dwHandle;
+        // 判断系统能否检索到指定文件的版本信息
+        DWORD dwDataSize = ::GetFileVersionInfoSizeA((LPCSTR)szModuleName.c_str(), &dwHandle);
+        if (dwDataSize == 0)
+        {
+            LOGGER_ERROR("GetFileVersionInfoSizeA error: {}", GetLastError());
+            break;
+        }
+ 
+        m_lpVersionData = new (std::nothrow) BYTE[dwDataSize];// 分配缓冲区
+        if (NULL == m_lpVersionData)
+        {
+            LOGGER_ERROR("new error");
+            break;
+        }
+ 
+        // 检索信息
+        if (!::GetFileVersionInfoA((LPCSTR)szModuleName.c_str(), dwHandle, dwDataSize, (void*)m_lpVersionData))
+        {
+            LOGGER_ERROR("GetFileVersionInfoA error: {}", GetLastError());
+            break;
+        }
+ 
+        UINT nQuerySize;
+        DWORD* pTransTable;
+        // 设置语言
+        if (!::VerQueryValueA(m_lpVersionData, "\\VarFileInfo\\Translation", (void **)&pTransTable, &nQuerySize))
+        {
+            LOGGER_ERROR("VerQueryValueA error: {}", GetLastError());
+            break;
+        }
+ 
+        m_dwLangCharset = MAKELONG(HIWORD(pTransTable[0]), LOWORD(pTransTable[0]));
+        if (m_lpVersionData == NULL)
+        {
+            LOGGER_ERROR("m_lpVersionData is NULL");
+            break;
+        }
+ 
+        tmpstr = new (std::nothrow) CHAR[256];// 分配缓冲区
+        if (NULL == tmpstr)
+        {
+            LOGGER_ERROR("new error");
+            break;
+        }
+        sprintf_s(tmpstr, 256, "\\StringFileInfo\\%08lx\\%s", m_dwLangCharset, ValueName.c_str());
+        LPVOID lpData;
+ 
+        // 调用此函数查询前需要先依次调用函数GetFileVersionInfoSize和GetFileVersionInfo
+        if (::VerQueryValueA((void *)m_lpVersionData, tmpstr, &lpData, &nQuerySize))
+        {
+            RetStr = (char*)lpData;
+        }else
+        {
+            LOGGER_ERROR("VerQueryValueA error: {}", GetLastError());
+            break;
+        }
+            
+
+        bSuccess = TRUE;
+    } while (FALSE);
+
+    // 销毁缓冲区
+    if (m_lpVersionData)
+    {
+        delete[] m_lpVersionData;
+        m_lpVersionData = NULL;
+    }
+    if (tmpstr)
+    {
+        delete[] tmpstr;
+        tmpstr = NULL;
+    }
+
+    return bSuccess;
 }
 
 

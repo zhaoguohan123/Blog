@@ -4,7 +4,7 @@
 #include <ntddk.h>
 #include <ntddkbd.h>
 
-#define CDO_SYB_NAME L"\\??\\KbdDrv"
+#define CDO_SYB_NAME L"\\??\\SymbKbdDrv"
 #define KBD_DEV_NAME L"\\KbdDrv"
 
 #define IOCTL_CODE_TO_CREATE_EVENT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x912, METHOD_BUFFERED, FILE_ANY_ACCESS)       // 创建事件
