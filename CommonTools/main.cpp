@@ -6,7 +6,7 @@
 #include "utils.h"
 #include ".\GetProcInfo\GetProcInfo.h"
 #include ".\GetTaskMsgProc\GetTaskMsgProcData.h"
-
+#include "json.hpp"
 
 // 创建一个服务，并在服务中输出传入的参数
 int main(int argc, TCHAR* argv[])
@@ -36,7 +36,10 @@ int main(int argc, TCHAR* argv[])
     // {
     //     LOGGER_INFO("proc_name:{} proc_version:{} proc_running_time:{}", iter->first, iter->second.proc_version, iter->second.proc_running_time);
     // }
-    
+    // 创建空的 JSON 对象
+
+    //nlohmann::json json_object = nlohmann::json::object();
+
     getchar();
     return 0;
 }
