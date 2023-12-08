@@ -1,5 +1,7 @@
 #include "GetProcInfo.h"
 
+using namespace GetProcInfoSpace;
+
 GetProcInfo::GetProcInfo()
 {
 }

@@ -11,35 +11,38 @@
 #include <codecvt>
 #include <locale>
 
-typedef struct PROCESSINFO
+namespace GetProcInfoSpace
 {
-    std::string proc_id;
-    std::string proc_path;
-    std::string proc_name;
 
-}ROCESSINFOA, *PROCESSINFOA;
+    typedef struct PROCESSINFO
+    {
+        std::string proc_id;
+        std::string proc_path;
+        std::string proc_name;
+
+    }ROCESSINFOA, *PROCESSINFOA;
 
 
-class   GetProcInfo
-{
-public:
-    GetProcInfo();
-    ~GetProcInfo();
+    class   GetProcInfo
+    {
+    public:
+        GetProcInfo();
+        ~GetProcInfo();
 
-    // 根据PID获取进程相关信息
-    BOOL GetAllProcInfo();
+        // 根据PID获取进程相关信息
+        BOOL GetAllProcInfo();
 
-    // 根据进程句柄获取exe所在路径
-    std::string GetProcPathByHandle(HANDLE hProcess);
+        // 根据进程句柄获取exe所在路径
+        std::string GetProcPathByHandle(HANDLE hProcess);
 
-    // 排除系统进程
-    BOOL ExcludeSysProc();
+        // 排除系统进程
+        BOOL ExcludeSysProc();
 
-    // 所有进程的信息
-    std::map<std::string , ROCESSINFOA> all_proc_info_ ;
+        // 所有进程的信息
+        std::map<std::string , ROCESSINFOA> all_proc_info_ ;
 
-    std::string GetProcInfo::ConvertWideToMultiByte(const std::wstring& wideString);
-};
-
+        std::string GetProcInfo::ConvertWideToMultiByte(const std::wstring& wideString);
+    };
+}
 
 #endif
