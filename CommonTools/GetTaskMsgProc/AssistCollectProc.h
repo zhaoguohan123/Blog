@@ -25,11 +25,11 @@ typedef struct PROCESSINFO
 }ROCESSINFOA, *PROCESSINFOA;
 
 
-class GetTaskMsgProcData
+class AssistCollectProc
 {
 public:
-    GetTaskMsgProcData();
-    ~GetTaskMsgProcData();
+    AssistCollectProc();
+    ~AssistCollectProc();
 
     //枚举窗口获取进程PID
     void GetProcIdByTopWnd();
@@ -58,10 +58,20 @@ public:
     //保存15分钟类采集到的进程数据
     std::shared_ptr<std::map<std::string, ROCESSINFOA>> all_proc_info_;
 
-    //将进程运行的时间转换成格式
+    //将进程运行的时间转换成格式 39:34:12 (39小时34分钟12秒)
     BOOL TransTimeFormat();
 
-    // 将收集转换成json格式
+    // 将收集转换成json格式字符串用于上报
+    std::string TransJsonToString(nlohmann::json & json_object);
+
+    // 运行工作线程; 
+    void Run();
+    
+    // 停止工作线程;
+    void Stop();
+
+    //1. 每15分钟上报一次收集到的软件信息  2. 每分钟收集一次软件信息
+    void WorkThread();
 
     // 把json数据上传给平台
     BOOL SendProcInfoToPlat();

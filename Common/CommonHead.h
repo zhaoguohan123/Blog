@@ -16,6 +16,8 @@
 
 
 #include "logger.h"
+#include "json.hpp"    // nlohmann json解析库
+#include "EncodingConversion.h"
 
 //#include <boost/thread.hpp>
 //#include <boost/bind.hpp>

@@ -5,8 +5,7 @@
 #include "Hide_Tray_icon.h"
 #include "utils.h"
 #include ".\GetProcInfo\GetProcInfo.h"
-#include ".\GetTaskMsgProc\GetTaskMsgProcData.h"
-#include "json.hpp"
+#include ".\AssistCollectProc\AssistCollectProc.h"
 
 // 创建一个服务，并在服务中输出传入的参数
 int main(int argc, TCHAR* argv[])
@@ -28,17 +27,19 @@ int main(int argc, TCHAR* argv[])
     // a.GetAllProcInfo();
     // a.ExcludeSysProc();
 
-     GetTaskMsgProcData * a = new GetTaskMsgProcData();
-    // std::shared_ptr<std::map<std::string, ROCESSINFOA>> proc_info_vec = a->GetProcInfo();
+    std::string str = "启动收集";
+    AssistCollectProc a;
+    a.Initialize();
 
-    // std::map<std::string, ROCESSINFOA>::iterator iter = proc_info_vec->begin();
-    // for (; iter != proc_info_vec->end(); ++iter)
-    // {
-    //     LOGGER_INFO("proc_name:{} proc_version:{} proc_running_time:{}", iter->first, iter->second.proc_version, iter->second.proc_running_time);
-    // }
-    // 创建空的 JSON 对象
-
-    //nlohmann::json json_object = nlohmann::json::object();
+    if (str == "启动收集" )
+    {
+        
+        a.Run();
+    }
+    else
+    {
+        a.Stop();
+    }
 
     getchar();
     return 0;

@@ -1,15 +1,25 @@
-#include "GetTaskMsgProcData.h"
+#include "AssistCollectProc.h"
 
 std::vector<HWND> g_top_level_wnds;
 
-GetTaskMsgProcData::GetTaskMsgProcData():
+AssistCollectProc::AssistCollectProc():
     proc_id_vec_(),
-    all_proc_info_(nullptr)
+    proc_work_thread_(nullptr),
+    all_proc_info_(nullptr),
+    exit_event_(NULL),
+    initialized_(false)
 {
 }
 
-GetTaskMsgProcData::~GetTaskMsgProcData()
+AssistCollectProc::~AssistCollectProc()
 {
+    (void)Stop();
+
+    if (exit_event_)
+    {
+        CloseHandle(exit_event_);
+        exit_event_ = NULL;
+    }
 }
 
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
@@ -27,7 +37,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     return TRUE;
 }
 
-void GetTaskMsgProcData::GetProcIdByTopWnd()
+void AssistCollectProc::GetProcIdByTopWnd()
 {
     EnumWindows(EnumWindowsProc, NULL);
     LOGGER_INFO("top_level_wnds_ size: {}", g_top_level_wnds.size());
@@ -49,7 +59,7 @@ void GetTaskMsgProcData::GetProcIdByTopWnd()
     }
 }
 
-void GetTaskMsgProcData::GetProcInfoByPid(DWORD processId, 
+void AssistCollectProc::GetProcInfoByPid(DWORD processId, 
                                         std::string & desc_str, 
                                         std::string & version_str,
                                         std::chrono::milliseconds & duration)
@@ -63,19 +73,22 @@ void GetTaskMsgProcData::GetProcInfoByPid(DWORD processId,
         // 获取进程可执行文件路径
         if (QueryFullProcessImageNameA(hProcess, 0, processPath, &bufferSize)) 
         {
-            if(!QueryValue("FileDescription", processPath, desc_str))
+            if(!QueryValue("FileDescription", processPath, desc_str))   // 可能含有中文，所以要转成UTF-8,否则会乱码，json解析会出错
             {
-                LOGGER_ERROR("QueryValue processId:{} FileDescription!",processId);
+                LOGGER_ERROR("QueryValue processId:{} FileDescription failed !",processId);
+            }
+            else
+            {
+                desc_str = ANSIToUTF8(desc_str);
             }
             if(!QueryValue("ProductVersion", processPath, version_str))
             {
-                LOGGER_ERROR("QueryValue processId:{} ProductVersion!",processId);
+                LOGGER_ERROR("QueryValue processId:{} ProductVersion failed!",processId);
             }
             if(!GetProcRunTimeByHandle(hProcess, duration))
             {
                 LOGGER_ERROR("GetProcRunTimeByHandle ");
             }
-
         }
         else
         {
@@ -94,7 +107,7 @@ void GetTaskMsgProcData::GetProcInfoByPid(DWORD processId,
     }
 }
 
-BOOL GetTaskMsgProcData::GetProcRunTimeByHandle(HANDLE hProcess, std::chrono::milliseconds & duration)
+BOOL AssistCollectProc::GetProcRunTimeByHandle(HANDLE hProcess, std::chrono::milliseconds & duration)
 {
     BOOL bRet = FALSE;
     do 
@@ -115,23 +128,6 @@ BOOL GetTaskMsgProcData::GetProcRunTimeByHandle(HANDLE hProcess, std::chrono::mi
 
                 std::chrono::milliseconds duration_tmp(milliseconds);
                 duration = duration_tmp;
-                // std::chrono::hours hours = std::chrono::duration_cast<std::chrono::hours>(duration);
-                // duration -= std::chrono::duration_cast<std::chrono::milliseconds>(hours);
-                // std::chrono::minutes minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
-                // duration -= std::chrono::duration_cast<std::chrono::milliseconds>(minutes);
-                // std::chrono::seconds seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-
-                // std::stringstream ss;
-                // if (hours.count() > 0) {
-                //     ss << hours.count() << "h-";
-                // }
-                // if (minutes.count() >= 0) {
-                //     ss << minutes.count() << "m-";
-                // }
-                // if (seconds.count() >= 0 || (hours.count() == 0 && minutes.count() == 0)) {
-                //     ss << seconds.count() << "s";
-                // }
-                // RetStr = ss.str();
             } 
             else 
             {
@@ -146,7 +142,7 @@ BOOL GetTaskMsgProcData::GetProcRunTimeByHandle(HANDLE hProcess, std::chrono::mi
     return bRet;
 }
 
-BOOL GetTaskMsgProcData::QueryValue(const std::string &ValueName, 
+BOOL AssistCollectProc::QueryValue(const std::string &ValueName, 
                                     const std::string &szModuleName, 
                                     std::string &RetStr)
 {
@@ -238,7 +234,7 @@ BOOL GetTaskMsgProcData::QueryValue(const std::string &ValueName,
     return bSuccess;
 }
 
-std::shared_ptr<std::map<std::string, ROCESSINFOA>> GetTaskMsgProcData::GetProcInfo()
+std::shared_ptr<std::map<std::string, ROCESSINFOA>> AssistCollectProc::GetProcInfo()
 {
     std::shared_ptr<std::map<std::string, ROCESSINFOA>> proc_info_vec = std::make_shared<std::map<std::string, ROCESSINFOA>>();
     (void)GetProcIdByTopWnd();
@@ -256,8 +252,159 @@ std::shared_ptr<std::map<std::string, ROCESSINFOA>> GetTaskMsgProcData::GetProcI
             ROCESSINFOA proc_info;
             proc_info.proc_running_time = duration;
             proc_info.proc_version = proc_version;
-            proc_info_vec->insert(std::make_pair(proc_desc, proc_info));
+            // 多个同名的应用，则取运行时间最早的那个应用的运行时间
+            if (proc_info_vec->find(proc_desc) != proc_info_vec->end())
+            {
+                if (proc_info_vec->at(proc_desc).proc_running_time < duration)
+                {
+                    proc_info_vec->at(proc_desc).proc_running_time = duration;
+                }
+                
+            }
+            else
+            {
+                proc_info_vec->insert(std::make_pair(proc_desc, proc_info));
+            }
         }
     }
     return proc_info_vec;
+}
+
+void AssistCollectProc::Run()
+{
+    if (!proc_work_thread_)
+    {
+        proc_work_thread_ = std::make_shared<std::thread>(&AssistCollectProc::WorkThread, this);
+    }
+    else
+    {
+        LOGGER_ERROR("proc_work_thread_ is running!");
+    }
+}
+
+void AssistCollectProc::Stop()
+{
+    SetEvent(exit_event_);
+
+    if (proc_work_thread_ && proc_work_thread_->joinable())
+    {
+        proc_work_thread_->join();
+        proc_work_thread_ .reset();
+    }
+}
+
+void AssistCollectProc::WorkThread()
+{
+    ResetEvent(exit_event_);
+    while (TRUE)
+    {
+        DWORD count = 0;
+
+        while (count++ < 15)  // 计时15分钟
+        {
+            DWORD dwRet = WaitForSingleObject(exit_event_,  60 *  1000);  // 计时1分钟
+            if (WAIT_OBJECT_0 == dwRet)
+            {
+                return; // 退出线程
+            }
+            else if (WAIT_TIMEOUT == dwRet) // 不在all_proc_info_中，则新增该应用的记录；在all_proc_info_中，则运行时间加一分钟
+            {
+                // 1. 获取进程信息
+                std::shared_ptr<std::map<std::string, ROCESSINFOA>> proc_info_vec = GetProcInfo();
+                if (proc_info_vec->size() > 0)
+                {
+                    if (all_proc_info_ == nullptr)
+                    {
+                        all_proc_info_ = proc_info_vec;
+                    }
+                    else
+                    {
+                        for (auto it = proc_info_vec->begin(); it != proc_info_vec->end(); ++it)
+                        {
+                            if (all_proc_info_->find(it->first) != all_proc_info_->end())
+                            {
+                                all_proc_info_->at(it->first).proc_running_time += std::chrono::minutes(1);
+                            }
+                            else
+                            {
+                                all_proc_info_->insert(std::make_pair(it->first, it->second));
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                LOGGER_ERROR("WaitForSingleObject error: {}", GetLastError());
+                return; 
+            }
+        }
+
+        // 1. 转换时间的格式
+        std::shared_ptr<std::map<std::string, ROCESSINFOA>> send_proc_data = all_proc_info_;
+        for (auto it = all_proc_info_->begin(); it != all_proc_info_->end(); ++it)
+        {
+            std::chrono::milliseconds duration = it->second.proc_running_time;
+            std::chrono::hours hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+            duration -= std::chrono::duration_cast<std::chrono::milliseconds>(hours);
+            std::chrono::minutes minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+            duration -= std::chrono::duration_cast<std::chrono::milliseconds>(minutes);
+            std::chrono::seconds seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+
+            std::stringstream ss;
+            if (hours.count() > 0) {
+                ss << hours.count() << ":";
+            }
+            if (minutes.count() >= 0) {
+                ss << minutes.count() << ":";
+            }
+            if (seconds.count() >= 0 || (hours.count() == 0 && minutes.count() == 0)) {
+                ss << seconds.count() << ":";
+            }
+            it->second.proc_string_runtime = ss.str();
+        }
+
+        // 2. 将收集数据转换成json格式字符串
+        nlohmann::json send_proc_data_json;
+        send_proc_data_json["VMuuid"] = "1234567890-2-2--2222";
+        
+         nlohmann::json appDataArray = nlohmann::json::array();
+         
+        for (auto it = all_proc_info_->begin(); it != all_proc_info_->end(); it++)
+        {
+            nlohmann::json appData;
+            appData["AppName"] = it->first;
+            appData["Version"] = it->second.proc_version;
+            appData["RunningTime"] = it->second.proc_string_runtime;
+
+            appDataArray.push_back(appData);
+        }
+        
+        send_proc_data_json["AppData"] = appDataArray;
+
+        LOGGER_INFO("app_info_json: {}", send_proc_data_json.dump());
+        // 3. 上传数据给平台
+    }
+}
+
+BOOL AssistCollectProc::Initialize()
+{
+    if  (initialized_)
+    {
+        return TRUE;
+    }
+    BOOL bRet = FALSE;
+    do
+    {
+        exit_event_ = CreateEvent(NULL, TRUE, FALSE, NULL);
+        if (NULL == exit_event_)
+        {
+            LOGGER_ERROR("CreateEvent error: {}", GetLastError());
+            break;
+        }
+        initialized_ = true;
+        bRet = TRUE;
+    } while (FALSE);
+
+    return bRet;
 }
