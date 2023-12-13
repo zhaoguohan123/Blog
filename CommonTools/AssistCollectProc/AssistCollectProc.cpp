@@ -71,14 +71,7 @@ void AssistCollectProc::GetProcInfoByPid(DWORD processId,
         // 获取进程可执行文件路径
         if (QueryFullProcessImageNameA(hProcess, 0, processPath, &bufferSize)) 
         {
-            if(!QueryValue("FileDescription", processPath, desc_str))   // 可能含有中文，所以要转成UTF-8,否则会乱码，json解析会出错
-            {
-                LOGGER_ERROR("QueryValue processId:{} FileDescription failed !",processId);
-            }
-            else
-            {
-                desc_str = ANSIToUTF8(desc_str);
-            }
+            (void)QueryValue("FileDescription", processPath, desc_str);
             (void)QueryValue("ProductVersion", processPath, version_str);
 
         }
@@ -93,37 +86,36 @@ void AssistCollectProc::GetProcInfoByPid(DWORD processId,
             hProcess = NULL;
         }
     }
-    else
-    {
-        LOGGER_ERROR("OpenProcess error: {}", GetLastError());
-    }
 }
 
-BOOL AssistCollectProc::QueryValue(const std::string &ValueName, 
-                                    const std::string &szModuleName, 
+BOOL AssistCollectProc::QueryValue(const std::string &Val, 
+                                    const std::string &szModule, 
                                     std::string &RetStr)
 {
+    std::wstring ValueName = UTF8ToUTF16(Val);
+    std::wstring szModuleName = UTF8ToUTF16(szModule);
+    std::wstring RetWStr;
+
     BOOL bSuccess = FALSE;
     BYTE*  m_lpVersionData = NULL;
     DWORD   m_dwLangCharset = 0;
-    CHAR *tmpstr = NULL;
+    WCHAR *tmpstr = NULL;
 
     do
     {
-        if (!ValueName.size() || !szModuleName.size())
+        if (ValueName.empty() || szModuleName.empty())
         {
             LOGGER_ERROR("ValueName or szModuleName is empty");
             break;
         }
         DWORD dwHandle;
         // 判断系统能否检索到指定文件的版本信息
-        DWORD dwDataSize = ::GetFileVersionInfoSizeA((LPCSTR)szModuleName.c_str(), &dwHandle);
+        DWORD dwDataSize = ::GetFileVersionInfoSizeW((LPCWSTR)szModuleName.c_str(), &dwHandle);
         if (dwDataSize == 0)
         {
-            LOGGER_ERROR("GetFileVersionInfoSizeA error: {}", GetLastError());
             break;
         }
- 
+
         m_lpVersionData = new (std::nothrow) BYTE[dwDataSize];// 分配缓冲区
         if (NULL == m_lpVersionData)
         {
@@ -132,18 +124,16 @@ BOOL AssistCollectProc::QueryValue(const std::string &ValueName,
         }
  
         // 检索信息
-        if (!::GetFileVersionInfoA((LPCSTR)szModuleName.c_str(), dwHandle, dwDataSize, (void*)m_lpVersionData))
+        if (!::GetFileVersionInfoW((LPCWSTR)szModuleName.c_str(), dwHandle, dwDataSize, (void*)m_lpVersionData))
         {
-            LOGGER_ERROR("GetFileVersionInfoA szModuleName: {} error: {}", szModuleName.c_str(), GetLastError());
             break;
         }
  
         UINT nQuerySize;
         DWORD* pTransTable;
         // 设置语言
-        if (!::VerQueryValueA(m_lpVersionData, "\\VarFileInfo\\Translation", (void **)&pTransTable, &nQuerySize))
+        if (!::VerQueryValueW(m_lpVersionData, L"\\VarFileInfo\\Translation", (void **)&pTransTable, &nQuerySize))
         {
-            LOGGER_ERROR("VerQueryValueA error: {}", GetLastError());
             break;
         }
  
@@ -154,21 +144,21 @@ BOOL AssistCollectProc::QueryValue(const std::string &ValueName,
             break;
         }
  
-        tmpstr = new (std::nothrow) CHAR[256];// 分配缓冲区
+        tmpstr = new (std::nothrow) WCHAR[256];// 分配缓冲区
         if (NULL == tmpstr)
         {
             LOGGER_ERROR("new error");
             break;
         }
-        sprintf_s(tmpstr, 256, "\\StringFileInfo\\%08lx\\%s", m_dwLangCharset, ValueName.c_str());
+        swprintf_s(tmpstr, 256, L"\\StringFileInfo\\%08lx\\%s", m_dwLangCharset, ValueName.c_str());
         LPVOID lpData;
        
         // 调用此函数查询前需要先依次调用函数GetFileVersionInfoSize和GetFileVersionInfo
-        if (::VerQueryValueA((void *)m_lpVersionData, tmpstr, &lpData, &nQuerySize))
+        if (::VerQueryValueW((void *)m_lpVersionData, tmpstr, &lpData, &nQuerySize))
         {
-            RetStr = (char*)lpData;
+            RetWStr = (WCHAR*)lpData;
         }
-        LOGGER_INFO("szModuleName: {} tmpstr:{} RetStr:{} U_RetStr:{}",  szModuleName.c_str(),tmpstr,RetStr.c_str(), ANSIToUTF8(RetStr));
+        RetStr = UTF16ToUTF8(RetWStr);
         
         bSuccess = TRUE;
     } while (FALSE);
@@ -241,9 +231,9 @@ void AssistCollectProc::WorkThread()
     {
         DWORD count = 0;
 
-        while (count++ < 1)  // 计时15分钟
+        while (count++ < 15)  // 计时15分钟
         {
-            DWORD dwRet = WaitForSingleObject(exit_event_, 10 * 1000);  // 计时1分钟
+            DWORD dwRet = WaitForSingleObject(exit_event_, 1 * 1000);  // 计时1分钟
             if (WAIT_OBJECT_0 == dwRet)
             {
                 return; // 退出线程
@@ -269,7 +259,6 @@ void AssistCollectProc::WorkThread()
             continue;
         }
         LOGGER_INFO("app_info_json: {}", app_info_json);
-        LOGGER_INFO("---------------------------");
         // 上传数据给平台
     }
 }
