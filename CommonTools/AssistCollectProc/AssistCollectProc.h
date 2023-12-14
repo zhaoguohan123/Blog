@@ -25,7 +25,6 @@ typedef struct PROCESSINFO
     int proc_run_time_miniutes;
 }ROCESSINFOA, *PROCESSINFOA;
 
-
 class AssistCollectProc
 {
 public:
@@ -47,14 +46,18 @@ public:
     //枚举窗口获取进程PID
     void GetProcIdByTopWnd();
     
-    //通过PID获取进程描述信息，版本信息，运行时间
+    //通过PID获取进程描述信息，版本信息
     void GetProcInfoByPid(DWORD processId,
                           std::string & desc_str, 
                           std::string & version_str);
 
+    //通过进程句柄获取进程运行时间
+    // BOOL GetProcRunTimeByHandle(HANDLE hProcess, 
+    //                             int & duration);
+
     //根据进程二进制所在路径，获取指定属性(版本号，描述信息)
-    BOOL QueryValue(const std::string& ValueName, 
-                    const std::string& szModuleName, 
+    BOOL QueryValue(const std::wstring& ValueName, 
+                    const std::wstring& szModuleName, 
                     std::string& RetStr);
 
     //查询任务管理器，进程选项卡中，应用的信息

@@ -58,6 +58,38 @@ void AssistCollectProc::GetProcIdByTopWnd()
     }
 }
 
+// BOOL AssistCollectProc::GetProcRunTimeByHandle(HANDLE hProcess, int & duration)
+// {
+//     BOOL bRet = FALSE;
+//     do 
+//     { 
+//         if (hProcess != NULL) 
+//         {
+//             FILETIME createTime, exitTime, kernelTime, userTime;
+
+//             if (GetProcessTimes(hProcess, &createTime, &exitTime, &kernelTime, &userTime)) {
+//                 FILETIME now;
+//                 (void)GetSystemTimeAsFileTime(&now);
+
+//                 ULONGLONG createTime64 = ((ULONGLONG)createTime.dwHighDateTime << 32) + createTime.dwLowDateTime;
+//                 ULONGLONG now64 = ((ULONGLONG)now.dwHighDateTime << 32) + now.dwLowDateTime;
+//                 ULONGLONG elapsedTime64 = now64 - createTime64;
+
+//                 duration  = static_cast<int>(elapsedTime64 / 10000000 / 60);
+//             } 
+//             else 
+//             {
+//                 LOGGER_ERROR("Failed to get process times. Error code: {}", GetLastError());
+//                 break;
+//             }
+//         }
+//         bRet = TRUE;
+//     }
+//     while(FALSE);
+
+//     return bRet;
+// }
+
 void AssistCollectProc::GetProcInfoByPid(DWORD processId, 
                                         std::string & desc_str, 
                                         std::string & version_str)
@@ -65,15 +97,14 @@ void AssistCollectProc::GetProcInfoByPid(DWORD processId,
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processId);
     if (hProcess != NULL) 
     {
-        char processPath[MAX_PATH] = { 0 };
+        TCHAR processPath[MAX_PATH] = { 0 };
         DWORD bufferSize = MAX_PATH;
 
         // 获取进程可执行文件路径
-        if (QueryFullProcessImageNameA(hProcess, 0, processPath, &bufferSize)) 
+        if (QueryFullProcessImageNameW(hProcess, 0, processPath, &bufferSize)) 
         {
-            (void)QueryValue("FileDescription", processPath, desc_str);
-            (void)QueryValue("ProductVersion", processPath, version_str);
-
+            (void)QueryValue(L"FileDescription", processPath, desc_str);
+            (void)QueryValue(L"ProductVersion", processPath, version_str);
         }
         else
         {
@@ -88,12 +119,10 @@ void AssistCollectProc::GetProcInfoByPid(DWORD processId,
     }
 }
 
-BOOL AssistCollectProc::QueryValue(const std::string &Val, 
-                                    const std::string &szModule, 
+BOOL AssistCollectProc::QueryValue(const std::wstring &ValueName, 
+                                    const std::wstring &szModuleName, 
                                     std::string &RetStr)
 {
-    std::wstring ValueName = UTF8ToUTF16(Val);
-    std::wstring szModuleName = UTF8ToUTF16(szModule);
     std::wstring RetWStr;
 
     BOOL bSuccess = FALSE;
@@ -181,6 +210,8 @@ BOOL AssistCollectProc::QueryValue(const std::string &Val,
 std::shared_ptr<std::map<std::string, ROCESSINFOA>> AssistCollectProc::GetProcInfo()
 {
     std::shared_ptr<std::map<std::string, ROCESSINFOA>> proc_info_vec = std::make_shared<std::map<std::string, ROCESSINFOA>>();
+
+    proc_id_vec_.clear();
     (void)GetProcIdByTopWnd();
 
     std::string  proc_desc;
@@ -193,7 +224,7 @@ std::shared_ptr<std::map<std::string, ROCESSINFOA>> AssistCollectProc::GetProcIn
         if (proc_desc.size() > 0)
         {
             ROCESSINFOA proc_info;
-            proc_info.proc_run_time_miniutes = 0;
+            proc_info.proc_run_time_miniutes = 1;
             proc_info.proc_version = proc_version;
             proc_info_vec->insert(std::make_pair(proc_desc, proc_info));
         }
@@ -230,19 +261,22 @@ void AssistCollectProc::WorkThread()
     while (TRUE)
     {
         DWORD count = 0;
+        all_proc_info_.reset();
 
         while (count++ < 15)  // 计时15分钟
         {
-            DWORD dwRet = WaitForSingleObject(exit_event_, 1 * 1000);  // 计时1分钟
+            DWORD dwRet = WaitForSingleObject(exit_event_, 5 * 1000);  // 计时1分钟
             if (WAIT_OBJECT_0 == dwRet)
             {
                 return; // 退出线程
             }
-            else if (WAIT_TIMEOUT == dwRet) // 不在all_proc_info_中，则新增该应用的记录；在all_proc_info_中，则运行时间加一分钟
+            else if (WAIT_TIMEOUT == dwRet) 
             {
                 // 采集应用信息
                 std::shared_ptr<std::map<std::string, ROCESSINFOA>> proc_info_vec = GetProcInfo();
-                (void)SaveProcInfo(proc_info_vec);
+
+                // 将每分钟采集到的数据，保存到要上报的数据中
+                (void)SaveProcInfo(proc_info_vec); 
             }
             else
             {
@@ -250,7 +284,7 @@ void AssistCollectProc::WorkThread()
                 return; 
             }
         }
-
+    
         // 将收集数据转换成json格式字符串
         std::string app_info_json = ConvertProcInfoToJson();
         if (app_info_json.size() <= 0)
@@ -259,7 +293,9 @@ void AssistCollectProc::WorkThread()
             continue;
         }
         LOGGER_INFO("app_info_json: {}", app_info_json);
-        // 上传数据给平台
+
+        // 上报数据
+        
     }
 }
 
@@ -278,6 +314,7 @@ BOOL AssistCollectProc::Initialize()
             LOGGER_ERROR("CreateEvent error: {}", GetLastError());
             break;
         }
+        all_proc_info_ = std::make_shared<std::map<std::string, ROCESSINFOA>>();
         initialized_ = true;
         bRet = TRUE;
     } while (FALSE);
@@ -294,22 +331,18 @@ void AssistCollectProc::SaveProcInfo(std::shared_ptr<std::map<std::string, ROCES
         if (all_proc_info_ == nullptr)  // 第一次采集数据
         {
             all_proc_info_ = proc_info_vec;
+            return;
         }
-        else
+
+        for (auto it = proc_info_vec->begin(); it != proc_info_vec->end(); ++it) // 遍历每分钟采集到的数据
         {
-            for (auto it = proc_info_vec->begin(); it != proc_info_vec->end(); ++it) // 遍历每分钟采集到的数据
+            if (all_proc_info_->find(it->first) == all_proc_info_->end())
             {
-                if (all_proc_info_->find(it->first) != all_proc_info_->end())
-                {
-                    // 应用在all_proc_info_中，则运行时间加一分钟
-                    all_proc_info_->at(it->first).proc_run_time_miniutes += 1;
-                }
-                else
-                {
-                    // 应用不在all_proc_info_中，则新增该应用的记录
-                    all_proc_info_->insert(std::make_pair(it->first, it->second));
-                }
+                // 应用不在all_proc_info_中，则新增该应用的记录
+                all_proc_info_->insert(std::make_pair(it->first, it->second));
             }
+
+            all_proc_info_->at(it->first).proc_run_time_miniutes += it->second.proc_run_time_miniutes;
         }
     }
 }
