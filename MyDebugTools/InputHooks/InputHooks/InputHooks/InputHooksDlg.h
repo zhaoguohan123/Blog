@@ -3,8 +3,13 @@
 //
 
 #pragma once
-#include "UserKbHook/UserKbHook.h"
 #include <memory>
+#include <string>
+#include <Windows.h>
+
+typedef void (*KeyCapturedCallback)(const std::wstring& col1, const std::wstring& col2, void* pObject);
+void Record(int key_stroke, WPARAM wParam);
+LRESULT __stdcall HookCallback(int nCode, WPARAM wParam, LPARAM lParam);
 
 // CInputHooksDlg 对话框
 class CInputHooksDlg : public CDialogEx
@@ -12,6 +17,8 @@ class CInputHooksDlg : public CDialogEx
 // 构造
 public:
 	CInputHooksDlg(CWnd* pParent = nullptr);	// 标准构造函数
+	void InstallUserHook();
+	void UnInstallUserHook();
 
 // 对话框数据
 #ifdef AFX_DESIGN_TIME
@@ -35,6 +42,11 @@ protected:
 public:
 	afx_msg void OnBnClickedOpenHook();
 	afx_msg void OnBnClickedCloseHook();
+	void SetKeyCapRecordCallBack(KeyCapturedCallback callback);
 	CListCtrl m_list_user_kb_ctrl;
-	std::shared_ptr<UserKbHook> user_kb_hook_;
+	CButton set_hook_btn_;
+	CButton un_set_hook_btn_;
+
+	static void* m_pObject;
+	afx_msg void OnBnClickedButtonClean();
 };
