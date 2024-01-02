@@ -9,6 +9,10 @@ HANDLE g_hEvent = NULL;
 extern BOOLEAN g_DisableCad;
 extern BOOLEAN g_DisableKeyBoard;
 
+HANDLE g_hPipeClient;
+IO_STATUS_BLOCK g_ioStatusBlock;
+KEVENT g_PipeEvent;
+
 NTSTATUS
 PocDeviceCreate(
     _In_ PDEVICE_OBJECT DeviceObject,
@@ -954,6 +958,32 @@ PocUnload(
 }
 
 
+// 初始化管道
+void initpipe()
+{
+    UNICODE_STRING uniName;
+    OBJECT_ATTRIBUTES objAttr;
+
+    RtlInitUnicodeString(&uniName, L"\\DosDevices\\Pipe\\LySharkPipeConn");
+    InitializeObjectAttributes(&objAttr, &uniName, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
+
+    ZwCreateFile(&g_hPipeClient, GENERIC_READ | GENERIC_WRITE, &objAttr, &g_ioStatusBlock, NULL, FILE_ATTRIBUTE_NORMAL, 0, FILE_OPEN, FILE_SYNCHRONOUS_IO_NONALERT, NULL, 0);
+    if (!g_hPipeClient)
+    {
+        return;
+    }
+    KeInitializeEvent(&g_PipeEvent, SynchronizationEvent, TRUE);
+}
+
+// 将数据传到R3应用层
+VOID ReportToClient(char* m_parameter, int lent)
+{
+    if (!NT_SUCCESS(ZwWriteFile(g_hPipeClient, NULL, NULL, NULL, &g_ioStatusBlock, (void*)m_parameter, lent, NULL, NULL)))
+    {
+        DbgPrint("写出错误");
+    }
+}
+
 NTSTATUS
 DriverEntry(
     _In_ PDRIVER_OBJECT  DriverObject,
@@ -1045,7 +1075,8 @@ DriverEntry(
     DriverObject->MajorFunction[IRP_MJ_CLOSE] = PocDeviceClose;
 
     DriverObject->DriverUnload = PocUnload;
-
+    
+    initpipe();
     /*
     * 创建键盘Hook初始化线程
     */

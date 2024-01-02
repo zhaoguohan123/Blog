@@ -27,7 +27,7 @@ BOOL ControlDrv::Init()
     do
     {
         // 打开设备
-        KbdDevice_ = CreateFile(L"\\\\.\\kbd_syb",
+        KbdDevice_ = CreateFile(L"\\\\.\\SymbKbdDrv",
             GENERIC_READ | GENERIC_WRITE,
             0,
             NULL,
@@ -413,5 +413,3 @@ VOID ControlDrv::SendCmdToDrv(DWORD dwCode)
         break;
     }
 }
-
-

