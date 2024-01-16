@@ -50,6 +50,10 @@ source_group(GetProcInfo FILES ${GET_PROC_INFO_FILES})
 file(GLOB ASSIST_COLLECT_POC_INFO_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/AssistCollectProc/*.cpp CommonTools/AssistCollectProc/*.h)
 source_group(AssistCollectProc FILES ${ASSIST_COLLECT_POC_INFO_FILES})
 
+# ----------------------- project ListConfigIni------------------------------------------ #
+file(GLOB LIST_CONFIG_INI_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/ListConfigIni/*.cpp CommonTools/ListConfigIni/*.h)
+source_group(ListConfigIni FILES ${LIST_CONFIG_INI_FILES})
+
 # ----------------------- project CppDesignModel------------------------------------------ #
 file(GLOB CPPDESIGNMODEL_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CppDesignModel/*.cpp CppDesignModel/*.h)
 source_group(CppDesignModel FILES ${CPPDESIGNMODEL_FILES})
@@ -82,7 +86,9 @@ add_executable(CommonTools
                 ${COMMON_FILES} 
                 ${COMMON_TOOLS_FILES} 
                 ${GET_PROC_INFO_FILES}
-                ${ASSIST_COLLECT_POC_INFO_FILES})
+                ${ASSIST_COLLECT_POC_INFO_FILES}
+                ${LIST_CONFIG_INI_FILES}
+                )
 target_link_libraries(CommonTools ${Boost_LIBRARIES})
 target_link_libraries(CommonTools ${CMAKE_CURRENT_SOURCE_DIR}/ComLib/spdlog/x64/lib/spdlog.lib)
 # 添加库文件到项目
