@@ -13,7 +13,7 @@
 #include <strsafe.h>
 #include <vector>
 #include <string>
-
+#include <fstream>
 
 #include "logger.h"
 #include "json.hpp"    // nlohmann json解析库

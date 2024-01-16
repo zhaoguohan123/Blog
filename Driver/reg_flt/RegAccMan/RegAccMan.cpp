@@ -22,8 +22,11 @@ int wmain(int argc, const wchar_t* argv[]) {
 	}
 
 	HANDLE hDevice = ::CreateFile(L"\\\\.\\RegProtectorDrv", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
-	if (hDevice == INVALID_HANDLE_VALUE)
+	if (hDevice == INVALID_HANDLE_VALUE) 
+	{
 		return Error("Failed to open handle to device");
+	}
+		
 
 	DWORD returned;
 	BOOL success;

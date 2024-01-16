@@ -27,6 +27,7 @@ extern "C"
 
 		bool symlinkCreated = false;
 
+		// 初始化过滤的字符串
 		InitializeListHead(&g_Globals.ItemsHead);
 
 		g_Globals.ItemCount = 0;
@@ -259,7 +260,21 @@ NTSTATUS OnRegistryNotify(PVOID, PVOID arg1, PVOID arg2) {
 				KdPrint(("[Troila]CmCallbackGetKeyObjectID failed", keyName));
 				break;
 			}
-			KdPrint(("[Troila] KeyName(U_C) In Linked List is: %wZ\n", keyName));
+			KdPrint(("[Troila] KeyName(U_C) is: %wZ\n", keyName));
+
+			// 内置默认保护vservice和vdservice的服务
+			ULONG count = sizeof(init_protect_path) / sizeof(UNICODE_STRING);
+			for (ULONG i = 0; i < count; i++)
+			{
+				if (RtlCompareUnicodeString(keyName, &init_protect_path[i], FALSE) == 0)
+				{
+					KdPrint(("[Troila] Found a Matching Protected key."));
+					status = STATUS_ACCESS_DENIED;
+					break;
+				}
+			}
+
+			// 匹配R3层传来的注册表路径
 			AutoLock<FastMutex> lock(g_Globals.Mutex);
 
 			for (auto i = 0; i < g_Globals.ItemCount; i++)

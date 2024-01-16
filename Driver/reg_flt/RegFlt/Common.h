@@ -31,3 +31,10 @@ struct FullItem
 	LIST_ENTRY Entry;
 	T Data;
 };
+
+UNICODE_STRING init_protect_path[] = {
+	RTL_CONSTANT_STRING(L"\\REGISTRY\\MACHINE\\SYSTEM\\CurrentControlSet\\Services\\vservice"),
+	RTL_CONSTANT_STRING(L"\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\Services\\vservice"),
+	RTL_CONSTANT_STRING(L"\\REGISTRY\\MACHINE\\SYSTEM\\CurrentControlSet\\Services\\vdservice"),
+	RTL_CONSTANT_STRING(L"\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\Services\\vdservice"),
+};
