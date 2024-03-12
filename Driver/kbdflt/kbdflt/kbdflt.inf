@@ -1,0 +1,58 @@
+;
+; kbdflt.inf
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=Keyboard
+ClassGuid={4D36E96B-E325-11CE-BFC1-08002BE10318}
+Provider=%ManufacturerName%
+DriverVer=
+CatalogFile=kbdflt.cat
+PnpLockDown=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+kbdflt.sys  = 1
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%kbdflt.DeviceDesc%=kbdflt_Device, Root\kbdflt
+
+[kbdflt_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+kbdflt.sys
+
+[kbdflt_Device.NT.Services]
+AddService = kbdflt,%SPSVCINST_ASSOCSERVICE%, kbdflt_Service_Inst
+
+[kbdflt_Service_Inst]
+DisplayName    = %kbdflt.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\kbdflt.sys
+
+[kbdflt_Device.NT.Wdf]
+KmdfService =  kbdflt, kbdflt_wdfsect
+
+[kbdflt_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="<Your manufacturer name>" 
+ClassName="Samples"
+DiskName = "kbdflt Installation Disk"
+kbdflt.DeviceDesc = "kbdflt Device"
+kbdflt.SVCDESC = "kbdflt Service"

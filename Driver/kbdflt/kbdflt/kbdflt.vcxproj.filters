@@ -19,29 +19,18 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="Poc.inf">
+    <Inf Include="kbdflt.inf">
       <Filter>Driver Files</Filter>
     </Inf>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Poc.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Kbd.c">
+    <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="global.h">
+    <ClInclude Include="common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="kbd.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="README.md">
-      <Filter>Resource Files</Filter>
-    </None>
   </ItemGroup>
 </Project>
