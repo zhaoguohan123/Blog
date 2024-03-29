@@ -1,13 +1,20 @@
 set_encodings("utf-8")
 add_rules("mode.debug", "mode.release")
 add_defines("UNICODE", "_UNICODE")
-add_requires("detours")
+add_requires(
+    "microsoft-detours", 
+    "spdlog",
+    "boost")
 
 target("InjDll")
     set_kind("shared")
     add_files("src/*.cpp")
     set_targetdir("../bin")
-    add_packages("detours")
+    add_packages(
+        "microsoft-detours",
+        "spdlog",
+        "boost")
+
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
 --

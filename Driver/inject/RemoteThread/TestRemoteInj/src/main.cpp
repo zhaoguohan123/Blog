@@ -18,8 +18,8 @@ BOOL EjectDll(DWORD dwPID, LPCTSTR szDllPath);
 
 int main()
 {
-    InjectDll(21092, L"C:\\Users\\zgh\\Desktop\\work\\Blog\\Driver\\inject\\RemoteThread\\bin\\InjDll.dll");
-    EjectDll(21092, L"C:\\Users\\zgh\\Desktop\\work\\Blog\\Driver\\inject\\RemoteThread\\bin\\InjDll.dll");
+    InjectDll(3148, L"C:\\Users\\zgh\\Desktop\\work\\Blog\\Driver\\inject\\RemoteThread\\bin\\InjDll.dll");
+    EjectDll(3148, L"C:\\Users\\zgh\\Desktop\\work\\Blog\\Driver\\inject\\RemoteThread\\bin\\InjDll.dll");
     system("pause");
 
     return 0;
