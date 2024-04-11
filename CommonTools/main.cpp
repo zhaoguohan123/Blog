@@ -9,12 +9,16 @@
 // #include ".\AssistCollectProc\AssistCollectProc.h"
 
 #include "test.h"
+#include <codecvt>
 
 // 创建一个服务，并在服务中输出传入的参数
 int main(int argc, TCHAR* argv[])
 {
     init_logger("logs.log");
-	TEST::test_list_ini();
+	//TEST::test_list_ini();
+    TEST::test_set_win_sound();
+
+
     //1 . 创建服务
     //serv_opt::run_serv(argc, argv);
     
