@@ -21,4 +21,23 @@ void init_logger(const char* log_file);
 //#define A2UW(x)     (boost::locale::conv::to_utf<wchar_t>(x, "GBK").c_str())
 //#define UW2A(x)     (boost::locale::conv::from_utf(x, "GBK").c_str())
 
+#include <codecvt>
+
+#define A2U(str)  to_wide_string(str)
+#define U2A(str)  to_byte_string(str)
+
+inline std::wstring to_wide_string(const std::string& input)
+{
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    return converter.from_bytes(input);
+}
+
+// convert wstring to string 
+inline std::string to_byte_string(const std::wstring& input)
+{
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    //std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    return converter.to_bytes(input);
+}
+
 #endif /* !LOGGER_H_ */

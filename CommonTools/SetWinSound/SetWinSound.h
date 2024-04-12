@@ -17,7 +17,7 @@ typedef enum Deviceproperties {
 } Deviceproperties;
 
 struct AUDIODEVICEPARAMETERS {
-    std::wstring          name;
+    std::string          name;
     Deviceproperties     properties;
     int                  value;
     bool                 defaultdevice = false;
@@ -32,7 +32,7 @@ public:
     ~SetWinSound();
     auto get_audio_devices() -> const std::vector<AUDIODEVICEPARAMETERS> &;
 
-    auto set_volume_by_name(std::wstring & deviceName, float volumeLevel) -> BOOL;
+    auto set_volume_by_name(std::string & deviceName, float volumeLevel) -> BOOL;
 
 private:
     std::vector<AUDIODEVICEPARAMETERS> DeviceParameters_;

@@ -38,15 +38,13 @@ namespace TEST
 
     void test_set_win_sound() 
     {
-
         auto set_win_sound = std::make_shared<SetWinSound>();
         
         auto res = set_win_sound->get_audio_devices();
         for (auto item:res)
         {
-            LOGGER_INFO("");
+            LOGGER_INFO("name is {}", item.name.c_str());
         }
-
     }
 }
 

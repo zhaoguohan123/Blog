@@ -15,7 +15,6 @@ auto SetWinSound::get_audio_devices() -> const std::vector<AUDIODEVICEPARAMETERS
 	ComPtr<IMMDeviceEnumerator> enumerator;
 	ComPtr<IMMDeviceCollection> collection;
 
-
 	CoInitialize(NULL);
     UINT count = 0;
     do
@@ -79,7 +78,6 @@ auto SetWinSound::get_audio_devices() -> const std::vector<AUDIODEVICEPARAMETERS
             }
 
             PROPVARIANT deviceDesc;
-
             PropVariantInit(&deviceDesc);
             hr = propertyStore->GetValue(PKEY_Device_FriendlyName, &deviceDesc);
             if (FAILED(hr)) {
@@ -116,24 +114,23 @@ auto SetWinSound::get_audio_devices() -> const std::vector<AUDIODEVICEPARAMETERS
                     bool isDefault = (wcscmp(deviceId, defaultDeviceId) == 0);
                     if (isDefault) {
                         device_parameters.defaultdevice = true;
-                        LOGGER_ERROR( "Device #{}  is the default device", i);
+                       LOGGER_INFO( "Device #{}  is the default device", i);
                     }
                     CoTaskMemFree(defaultDeviceId);
                 }
             }
 
-            device_parameters.name = deviceDesc.pwszVal;
+            device_parameters.name = U2A(deviceDesc.pwszVal);
             device_parameters.value = volumeLevel * 100;
             if (dataFlow == eRender) {
                 device_parameters.properties = Render;
-               // LOGGER_INFO("Output Device #{} : {}, Volume: ", i, device_parameters.name, device_parameters.value);
+                LOGGER_INFO("Output Device #{} : {}, Volume:{}", i, (device_parameters.name).c_str(), device_parameters.value);
             }
             else if (dataFlow == eCapture) {
                 device_parameters.properties = Capture;
-                //LOGGER_INFO("Input Device # {} :{},  Volume:{}", i, device_parameters.name, device_parameters.value);
+                LOGGER_INFO("Input Device # {} :{},  Volume:{}", i, (device_parameters.name).c_str(), device_parameters.value);
             }
             DeviceParameters_.push_back(device_parameters);
-
             PropVariantClear(&deviceDesc);
             CoTaskMemFree(deviceId);
         }
@@ -144,7 +141,7 @@ auto SetWinSound::get_audio_devices() -> const std::vector<AUDIODEVICEPARAMETERS
     return DeviceParameters_;
 }
 
-auto SetWinSound::set_volume_by_name(std::wstring& deviceName, float volumeLevel) -> BOOL
+auto SetWinSound::set_volume_by_name(std::string& deviceName, float volumeLevel) -> BOOL
 {
     BOOL bRet = FALSE;
     
@@ -207,7 +204,7 @@ auto SetWinSound::set_volume_by_name(std::wstring& deviceName, float volumeLevel
                 continue;
             }
 
-            std::wstring friendlyName = deviceDesc.pwszVal;
+            std::string friendlyName = U2A(deviceDesc.pwszVal);
             if (friendlyName == deviceName) {
                 hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)endpointVolume.GetAddressOf());
                 if (FAILED(hr)) {
@@ -223,7 +220,7 @@ auto SetWinSound::set_volume_by_name(std::wstring& deviceName, float volumeLevel
                     continue;
                 }
 
-                //LOGGER_INFO("Volume for device '{}' set to ", friendlyName, volumeLevel);
+                LOGGER_INFO("Volume for device '{}' set to ", friendlyName.c_str(), volumeLevel);
                 CoTaskMemFree(deviceId);
                 break;
             }

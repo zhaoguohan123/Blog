@@ -50,6 +50,10 @@ source_group(GetProcInfo FILES ${GET_PROC_INFO_FILES})
 file(GLOB ASSIST_COLLECT_POC_INFO_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/AssistCollectProc/*.cpp CommonTools/AssistCollectProc/*.h)
 source_group(AssistCollectProc FILES ${ASSIST_COLLECT_POC_INFO_FILES})
 
+# -----------------------SetWinSound----------------------------------------------#
+file(GLOB SET_WINDOWS_SOUND RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/SetWinSound/*.cpp CommonTools/SetWinSound/*.h)
+source_group(SetWinSound FILES ${SET_WINDOWS_SOUND})
+
 # ----------------------- project ListConfigIni------------------------------------------ #
 file(GLOB LIST_CONFIG_INI_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/ListConfigIni/*.cpp CommonTools/ListConfigIni/*.h)
 source_group(ListConfigIni FILES ${LIST_CONFIG_INI_FILES})
@@ -87,6 +91,7 @@ add_executable(CommonTools
                 ${COMMON_TOOLS_FILES} 
                 ${GET_PROC_INFO_FILES}
                 ${ASSIST_COLLECT_POC_INFO_FILES}
+                ${SET_WINDOWS_SOUND}
                 ${LIST_CONFIG_INI_FILES}
                 )
 target_link_libraries(CommonTools ${Boost_LIBRARIES})
