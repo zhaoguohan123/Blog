@@ -17,12 +17,8 @@ int main(int argc, TCHAR* argv[])
     init_logger("logs.log");
 	//TEST::test_list_ini();
 
-
+ 
     TEST::test_set_win_sound();
-
-
-
-
 
     //1 . 创建服务
     //serv_opt::run_serv(argc, argv);

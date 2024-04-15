@@ -38,12 +38,17 @@ namespace TEST
 
     void test_set_win_sound() 
     {
-        auto set_win_sound = std::make_shared<SetWinSound>();
+        auto set_win_sound_obj = std::make_shared<SetWinSound>();
         
-        auto res = set_win_sound->get_audio_devices();
+        auto res = set_win_sound_obj->get_audio_devices();
         for (auto item:res)
         {
-            LOGGER_INFO("name is {}", item.name.c_str());
+            // list the all input audio devices
+            LOGGER_INFO("name:{} dev_id:{}", item.name.c_str(), U2A(item.device_id).c_str());
+
+            // change the current default input audio device
+            set_win_sound_obj->set_default_audio_devices(item.device_id);
+            Sleep(1000);
         }
     }
 }

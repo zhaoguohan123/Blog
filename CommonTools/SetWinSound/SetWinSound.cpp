@@ -122,6 +122,8 @@ auto SetWinSound::get_audio_devices() -> const std::vector<AUDIODEVICEPARAMETERS
 
             device_parameters.name = U2A(deviceDesc.pwszVal);
             device_parameters.value = volumeLevel * 100;
+            device_parameters.device_id = deviceId;
+
             if (dataFlow == eRender) {
                 device_parameters.properties = Render;
                 LOGGER_INFO("Output Device #{} : {}, Volume:{}", i, (device_parameters.name).c_str(), device_parameters.value);
@@ -234,4 +236,25 @@ auto SetWinSound::set_volume_by_name(std::string& deviceName, float volumeLevel)
    
     CoUninitialize();
     return bRet;
+}
+
+void SetWinSound::set_default_audio_devices(std::wstring & device_id)
+{
+
+    HRESULT hr = CoInitialize(NULL);
+    ComPtr<IPolicyConfigVista> pPolicyConfig;
+    ERole reserved = eConsole;
+
+    hr = CoCreateInstance(__uuidof(CPolicyConfigVistaClient), NULL, CLSCTX_ALL, __uuidof(IPolicyConfigVista), (LPVOID*)&pPolicyConfig);
+
+    if (SUCCEEDED(hr))
+    {
+        hr = pPolicyConfig->SetDefaultEndpoint(device_id.c_str(), reserved);
+    }
+    else
+    {
+        LOGGER_ERROR("SetDefaultEndpoint failed! errcode {}", hr);
+    }
+
+    CoUninitialize();
 }
