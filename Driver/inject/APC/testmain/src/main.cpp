@@ -2,6 +2,8 @@
 #include <iostream>
 
 using namespace std;
+
+// the exe for test inject
 int main(int argc, char** argv)
 {
     DWORD PID = GetCurrentProcessId();
@@ -9,7 +11,8 @@ int main(int argc, char** argv)
 
     while (true) {
         printf("Waiting to be hooked!: PID: %d\n", PID);
-        SleepEx(1000, TRUE);
+        MessageBoxW(NULL, L"main", L"Testmain", MB_OK);
+        SleepEx(5000, TRUE);
     }
     return (EXIT_SUCCESS);
 }

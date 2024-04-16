@@ -1,11 +1,16 @@
 set_encodings("utf-8")
-add_rules("mode.debug", "mode.release")
+
 add_defines("UNICODE", "_UNICODE")
+add_requires("spdlog")
+
+add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
+add_rules("mode.debug", "mode.release")
 
 target("UserApcInj")
     set_kind("binary")
     add_files("src/*.cpp")
     add_syslinks("user32", "advapi32", "psapi")
+    add_packages("spdlog")
 
 --
 -- If you want to known more usage about xmake, please see https://xmake.io

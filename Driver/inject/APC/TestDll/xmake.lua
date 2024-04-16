@@ -1,4 +1,8 @@
+set_encodings("utf-8")
+add_defines("UNICODE", "_UNICODE")
+add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})  -- Generate compile_commands.json for vscode    xmake q --export
 add_rules("mode.debug", "mode.release")
+add_requires("microsoft-detours")
 
 target("TestDll")
     set_kind("shared")
@@ -6,6 +10,8 @@ target("TestDll")
     add_files("src/test.export.txt")
     add_rules("utils.symbols.export_list", {export_classes = true})
     add_syslinks("user32", "gdi32", "kernel32")
+    add_packages("microsoft-detours")
+    
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
 --
