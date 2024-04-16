@@ -1,12 +1,19 @@
 set_encodings("utf-8")
+set_exceptions("cxx")
 add_rules("mode.debug", "mode.release")
+add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
 add_defines("UNICODE", "_UNICODE")
+add_requires("spdlog")
+
 
 target("RemoteInjector")
     set_kind("binary")
     add_files("src/*.cpp")
+
+    add_headerfiles("src/*.h")
     set_targetdir("../bin")
     add_syslinks("user32", "advapi32", "psapi")
+    add_packages("spdlog")
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
 --

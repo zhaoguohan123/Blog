@@ -5,7 +5,3 @@
 
 #include <detours.h>
 
-void  InstallApiHook();
-
-void  UnInstallApiHook();
-

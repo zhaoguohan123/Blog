@@ -10,6 +10,7 @@ target("InjDll")
     set_kind("shared")
     add_files("src/*.cpp")
     set_targetdir("../bin")
+    add_syslinks("user32", "advapi32", "psapi")
     add_packages(
         "microsoft-detours",
         "spdlog",
