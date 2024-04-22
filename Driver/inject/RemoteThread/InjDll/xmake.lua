@@ -1,10 +1,10 @@
 set_encodings("utf-8")
 add_rules("mode.debug", "mode.release")
 add_defines("UNICODE", "_UNICODE")
+add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
 add_requires(
     "microsoft-detours", 
-    "spdlog",
-    "boost")
+    "spdlog")
 
 target("InjDll")
     set_kind("shared")
@@ -13,8 +13,7 @@ target("InjDll")
     add_syslinks("user32", "advapi32", "psapi")
     add_packages(
         "microsoft-detours",
-        "spdlog",
-        "boost")
+        "spdlog")
 
 --
 -- If you want to known more usage about xmake, please see https://xmake.io

@@ -19,8 +19,8 @@ int wmain(int argc, LPWSTR * argv)
     obj->Initialize();
     obj->InjectDll();
 
-    getchar();
-    obj->EjectDll();
+    // getchar();
+    // obj->EjectDll();
 
     return 0;
 }
