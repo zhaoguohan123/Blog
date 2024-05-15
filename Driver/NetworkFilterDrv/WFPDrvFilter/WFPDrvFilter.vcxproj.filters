@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="util">
+      <UniqueIdentifier>{694a408a-a956-4a22-92b8-ea38474ad2cd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="head">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="inf">
+      <UniqueIdentifier>{ed2e8bde-4a8d-4d8f-bf9f-a873b59c2d5b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="FilterList.c">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="Comm.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="WfpFilter.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessTime.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessTimeList.c">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessProhibition.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util.c">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessInjection.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="TdiLayer.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="InjectList.c">
+      <Filter>util</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FilterList.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="Comm.h">
+      <Filter>head</Filter>
+    </ClInclude>
+    <ClInclude Include="WfpFilter.h">
+      <Filter>head</Filter>
+    </ClInclude>
+    <ClInclude Include="Unrevealed.h">
+      <Filter>head</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessTime.h">
+      <Filter>head</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessTimeList.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessProhibition.h">
+      <Filter>head</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessInjection.h">
+      <Filter>head</Filter>
+    </ClInclude>
+    <ClInclude Include="TdiLayer.h">
+      <Filter>head</Filter>
+    </ClInclude>
+    <ClInclude Include="InjectList.h">
+      <Filter>util</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="WFPDrvFilter.inf">
+      <Filter>inf</Filter>
+    </Inf>
+  </ItemGroup>
+</Project>
