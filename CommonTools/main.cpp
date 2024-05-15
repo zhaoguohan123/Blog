@@ -17,37 +17,10 @@ int main(int argc, TCHAR* argv[])
     init_logger("logs.log");
 	//TEST::test_list_ini();
 
- 
-    TEST::test_set_win_sound();
+    // 测试设置扬声器
+    //TEST::test_set_win_sound();
 
-    //1 . 创建服务
-    //serv_opt::run_serv(argc, argv);
-    
-    // 2.遍历所有的内核obj
-    //MyWinobj::main();
-
-
-    //3. 类析构时，类中的线程未退出，且在使用类中对象
-    //DestructWithThreadNotEnd::main();
-    
-    //HIDE_TRAY_ICON::DeleteTrayIcon();
-    // GetProcInfo a;
-    // a.GetAllProcInfo();
-    // a.ExcludeSysProc();
-
-    // std::string str = "启动收集";
-    // AssistCollectProc a;
-    // a.Initialize();
-
-    // if (str == "启动收集" )
-    // {
-        
-    //     a.Run();
-    // }
-    // else
-    // {
-    //     a.Stop();
-    // }
+    TEST::test_job_queue();
 
     getchar();
     return 0;

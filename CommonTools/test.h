@@ -4,6 +4,7 @@
 #include "CommonHead.h"
 #include "ListConfigIni/list_ini.h"
 #include "SetWinSound/SetWinSound.h"
+#include "JobQueue/JobQueue.h"
 
 namespace TEST
 {
@@ -51,8 +52,20 @@ namespace TEST
             Sleep(1000);
         }
     }
+
+    void test_job_queue() 
+    {
+        for (int i = 0; i<10; i++)
+        {
+            JobQueue::getInstance()->CreateJob(i, "zgh",
+                [](int code, std::string resMsg)
+                {
+                   // LOGGER_INFO("code {} resMsg {}", code, resMsg);
+                }
+            );
+        }
+        
+    }
 }
-
-
 
 #endif // _TEST_HEADER_
