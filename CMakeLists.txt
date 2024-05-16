@@ -58,6 +58,10 @@ source_group(SetWinSound FILES ${SET_WINDOWS_SOUND})
 file(GLOB LIST_CONFIG_INI_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/ListConfigIni/*.cpp CommonTools/ListConfigIni/*.h)
 source_group(ListConfigIni FILES ${LIST_CONFIG_INI_FILES})
 
+# ----------------------- project JobQueue------------------------------------------ #
+file(GLOB JOB_QUEUE_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/JobQueue/*.cpp CommonTools/JobQueue/*.h)
+source_group(JobQueue FILES ${JOB_QUEUE_FILES})
+
 # ----------------------- project CppDesignModel------------------------------------------ #
 file(GLOB CPPDESIGNMODEL_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CppDesignModel/*.cpp CppDesignModel/*.h)
 source_group(CppDesignModel FILES ${CPPDESIGNMODEL_FILES})
@@ -86,13 +90,14 @@ file(GLOB COMMON_TOOLS_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CommonTools/*.
 source_group(CommonTools FILES ${COMMON_TOOLS_FILES})
 
 add_compile_options("/std:c++17")
-add_executable(CommonTools 
-                ${COMMON_FILES} 
-                ${COMMON_TOOLS_FILES} 
+add_executable(CommonTools
+                ${COMMON_FILES}
+                ${COMMON_TOOLS_FILES}
                 ${GET_PROC_INFO_FILES}
                 ${ASSIST_COLLECT_POC_INFO_FILES}
                 ${SET_WINDOWS_SOUND}
                 ${LIST_CONFIG_INI_FILES}
+                ${JOB_QUEUE_FILES}
                 )
 target_link_libraries(CommonTools ${Boost_LIBRARIES})
 target_link_libraries(CommonTools ${CMAKE_CURRENT_SOURCE_DIR}/ComLib/spdlog/x64/lib/spdlog.lib)
