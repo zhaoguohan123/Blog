@@ -5,6 +5,7 @@
 #include "ListConfigIni/list_ini.h"
 #include "SetWinSound/SetWinSound.h"
 #include "JobQueue/JobQueue.h"
+#include "ProcessProtect/ProcessProtect.h"
 
 namespace TEST
 {
@@ -65,6 +66,11 @@ namespace TEST
             );
         }
         
+    }
+
+    void test_CBT_hook_task_list_protect_proc_kill()
+    {
+        ProcessProtectTest();
     }
 }
 
