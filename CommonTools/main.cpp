@@ -20,7 +20,9 @@ int main(int argc, TCHAR* argv[])
     // 测试设置扬声器
     //TEST::test_set_win_sound();
 
-    TEST::test_job_queue();
+    //TEST::test_job_queue();
+
+    TEST::test_CBT_hook_task_list_protect_proc_kill();
 
     getchar();
     return 0;

@@ -102,7 +102,7 @@ BOOL RemoteThreadInject::InjectDll()
     HANDLE hRemotehandle = CreateRemoteThread(hProcess, NULL, 0, pThreadProc, pRemoteBuf, 0, NULL);
     if (!hRemotehandle)
     {
-        LOGGER_ERROR("InjectDll() : MyCreateRemoteThread() failed!!!");
+        LOGGER_ERROR("InjectDll: MyCreateRemoteThread{} failed!!!", GetLastError());
         goto INJECTDLL_EXIT;
     }
     WaitForSingleObject(hRemotehandle, INFINITE);
