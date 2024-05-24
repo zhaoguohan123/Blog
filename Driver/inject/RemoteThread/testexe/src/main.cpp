@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
         std::cout << "LoadLibrary() failed: " << GetLastError() <<std::endl;
         return 0;
     }
-
+    
     // 安装钩子
     typedef void(*pSetHook)(void);
     pSetHook SetHook = (pSetHook)GetProcAddress(hMod, "SetHook");
