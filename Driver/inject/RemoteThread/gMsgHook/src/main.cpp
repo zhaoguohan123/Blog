@@ -3,8 +3,10 @@
 #include <TlHelp32.h>
 #include <tchar.h>
 #include <psapi.h>
+#include <winuser.h>
 #include "detours.h"
 #include "SingletonApplication.h"
+
 
 VOID DetAttach(PVOID *ppbReal, PVOID pbMine, PCHAR psz)
 {
@@ -35,11 +37,9 @@ static HMODULE  s_hInst = NULL;
 static WCHAR    s_wzDllPath[MAX_PATH];
 CSingletonApplication g_SingletonApplication;
 
-DWORD g_TargtThread = -1;
-DWORD g_TargtThread = -1;
-
 std::string GetParentProcessName(HANDLE hProcess);
 
+#pragma region MyRegion 
 BOOL (WINAPI * pTerminateProcess)(HANDLE hProcess, UINT uExitCode) = TerminateProcess;
 BOOL WINAPI MyTerminateProcess(HANDLE hProcess, UINT uExitCode);
 BOOL WINAPI MyTerminateProcess(HANDLE hProcess, UINT uExitCode)
@@ -81,7 +81,7 @@ BOOL WINAPI MyTerminateProcess(HANDLE hProcess, UINT uExitCode)
 
     return pTerminateProcess(hProcess, uExitCode);
 }
-
+#pragma endregion
 
 // 获取进程名的函数
 std::string GetProcessNameById(DWORD processId) {
@@ -185,7 +185,6 @@ extern "C" __declspec(dllexport) void SetHook()
         g_SingletonApplication.RegisterCurrentInstance();
         global_Hook = SetWindowsHookEx(WH_CBT, MyProc, GetModuleHandleA("gMsgHook.dll"), 0);
     }
-    
 }
 
 // 卸载全局钩子
