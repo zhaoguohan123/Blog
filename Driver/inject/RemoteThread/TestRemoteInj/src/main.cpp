@@ -20,7 +20,7 @@ int wmain(int argc, LPWSTR * argv)
     obj->InjectDll();
 
     getchar();
-    //obj->EjectDll();
+    obj->EjectDll();
 
     return 0;
 }

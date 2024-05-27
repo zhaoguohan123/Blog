@@ -20,6 +20,16 @@ DWORD RemoteThreadInject::GetProcIdFromProcName(LPWSTR PName)
     PROCESSENTRY32 Process;
     Process.dwSize = sizeof(PROCESSENTRY32);
 
+    wchar_t* endPtr;
+    DWORD intValue = std::wcstol(PName, &endPtr, 10); // 基数10表示十进制
+
+    if (*endPtr == L'\0') {
+        std::wcout << L"转换成功，整数值为：" << intValue << std::endl;
+        return intValue;
+    } else {
+        std::wcout << L"转换失败，字符串包含无效字符。" << std::endl;
+    }
+
     do
     {
         snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
