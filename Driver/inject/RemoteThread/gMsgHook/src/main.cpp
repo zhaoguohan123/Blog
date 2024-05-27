@@ -1,13 +1,15 @@
 #include <iostream>
 #include <windows.h>
 #include <TlHelp32.h>
+#include <winternl.h>
 #include <tchar.h>
 #include <psapi.h>
 #include <winuser.h>
 #include "detours.h"
 #include "SingletonApplication.h"
 
-
+#define HIDE_PROCESS_NAME_1 L"KLDELearnApp.exe"
+#define HIDE_PROCESS_NAME_2 L"KLDELearnDaemon.exe"
 VOID DetAttach(PVOID *ppbReal, PVOID pbMine, PCHAR psz)
 {
     LONG l = DetourAttach(ppbReal, pbMine);
@@ -37,115 +39,95 @@ static HMODULE  s_hInst = NULL;
 static WCHAR    s_wzDllPath[MAX_PATH];
 CSingletonApplication g_SingletonApplication;
 
-std::string GetParentProcessName(HANDLE hProcess);
-
 #pragma region MyRegion 
-BOOL (WINAPI * pTerminateProcess)(HANDLE hProcess, UINT uExitCode) = TerminateProcess;
-BOOL WINAPI MyTerminateProcess(HANDLE hProcess, UINT uExitCode);
-BOOL WINAPI MyTerminateProcess(HANDLE hProcess, UINT uExitCode)
+typedef struct _VM_COUNTERS
 {
-    char proc_name[MAX_PATH] = {0};
-    std::string proc_parent_name_;
-    if (GetProcessImageFileNameA(hProcess, proc_name, MAX_PATH))
+    SIZE_T        PeakVirtualSize;
+    SIZE_T        VirtualSize;
+    ULONG         PageFaultCount;
+    SIZE_T        PeakWorkingSetSize;
+    SIZE_T        WorkingSetSize;
+    SIZE_T        QuotaPeakPagedPoolUsage;
+    SIZE_T        QuotaPagedPoolUsage;
+    SIZE_T        QuotaPeakNonPagedPoolUsage;
+    SIZE_T        QuotaNonPagedPoolUsage;
+    SIZE_T        PagefileUsage;
+    SIZE_T        PeakPagefileUsage;
+} VM_COUNTERS;
+
+
+typedef NTSTATUS(WINAPI* __NtQuerySystemInformation)(
+    _In_       SYSTEM_INFORMATION_CLASS SystemInformationClass,
+    _In_ _Out_ PVOID SystemInformation,
+    _In_       ULONG SystemInformationLength,
+    _Out_opt_  PULONG ReturnLength
+    );
+
+typedef struct _MY_UNICODE_STRING
+{
+    USHORT Length;
+    USHORT MaximumLength;
+    PWSTR  Buffer;
+} MY_UNICODE_STRING, * PMY_UNICODE_STRING;
+
+typedef struct _MY_SYSTEM_PROCESS_INFORMATION
+{
+    ULONG            NextEntryOffset; // 指向下一个结构体的指针
+    ULONG            ThreadCount; // 本进程的总线程数
+    ULONG            Reserved1[6]; // 保留
+    LARGE_INTEGER    CreateTime; // 进程的创建时间
+    LARGE_INTEGER    UserTime; // 在用户层的使用时间
+    LARGE_INTEGER    KernelTime; // 在内核层的使用时间
+    MY_UNICODE_STRING   ImageName; // 进程名
+    KPRIORITY        BasePriority; // 
+    ULONG            ProcessId; // 进程ID
+    ULONG            InheritedFromProcessId;
+    ULONG            HandleCount; // 进程的句柄总数
+    ULONG            Reserved2[2]; // 保留
+    VM_COUNTERS      VmCounters;
+    IO_COUNTERS      IoCounters;
+    SYSTEM_THREAD_INFORMATION Threads[5]; // 子线程信息数组
+}MY_SYSTEM_PROCESS_INFORMATION, * PMY_SYSTEM_PROCESS_INFORMATION;
+
+
+
+PVOID pNtQuerySystemInformation = DetourFindFunction("ntdll.dll","NtQuerySystemInformation");
+NTSTATUS WINAPI MyNtQuerySystemInformation(
+    _In_       SYSTEM_INFORMATION_CLASS SystemInformationClass,
+    _In_ _Out_ PVOID SystemInformation,
+    _In_       ULONG SystemInformationLength,
+    _Out_opt_  PULONG ReturnLength
+) 
+{
+    NTSTATUS Result;
+    PSYSTEM_PROCESS_INFORMATION pSystemProcess;
+    PSYSTEM_PROCESS_INFORMATION pNextSystemProcess;
+
+    Result = ((__NtQuerySystemInformation)pNtQuerySystemInformation)(SystemInformationClass, SystemInformation, SystemInformationLength, ReturnLength);
+
+    if (NT_SUCCESS(Result) && SystemInformationClass == SystemProcessInformation)
     {
-        std::string proc_name_ = proc_name;
-        if (proc_name_.find("KLDELearnApp.exe") != std::string::npos)    // 防止用任务管理器关闭的进程名
+        pSystemProcess = (PSYSTEM_PROCESS_INFORMATION)SystemInformation;
+        pNextSystemProcess = (PSYSTEM_PROCESS_INFORMATION)((PBYTE)pSystemProcess + pSystemProcess->NextEntryOffset);
+
+        while (pNextSystemProcess->NextEntryOffset != 0)
         {
-            hProcess = NULL;
-        }
-        if (proc_name_.find("KLDELearnDaemon.exe") != std::string::npos)    // 防止用任务管理器关闭的进程名
-        {
-            hProcess = NULL;
-        }
-        if (proc_name_.find("test_wm_close.exe") != std::string::npos)    // 防止用任务管理器关闭的进程名
-        {
-            hProcess = NULL;
-        }
-    }
-    proc_parent_name_ = GetParentProcessName(hProcess);
-    if (proc_parent_name_.size() > 0)
-    {
-        if (proc_parent_name_.find("KLDELearnApp.exe") != std::string::npos)    // 防止用任务管理器关闭的进程名
-        {
-            return TRUE;
-        }
-        if (proc_parent_name_.find("KLDELearnDaemon.exe") != std::string::npos)    // 防止用任务管理器关闭的进程名
-        {
-            return TRUE;
-        }
-        if (proc_parent_name_.find("test_wm_close.exe") != std::string::npos)    // 防止用任务管理器关闭的进程名
-        {
-            return TRUE;
+            if (lstrcmpW((&pNextSystemProcess->ImageName)->Buffer, HIDE_PROCESS_NAME_1) == 0) 
+            {
+                pSystemProcess->NextEntryOffset += pNextSystemProcess->NextEntryOffset;
+            }
+            if (lstrcmpW((&pNextSystemProcess->ImageName)->Buffer, HIDE_PROCESS_NAME_2) == 0) 
+            {
+                pSystemProcess->NextEntryOffset += pNextSystemProcess->NextEntryOffset;
+            }
+            pSystemProcess = pNextSystemProcess;
+            pNextSystemProcess = (PSYSTEM_PROCESS_INFORMATION)((PBYTE)pSystemProcess + pSystemProcess->NextEntryOffset);
         }
     }
 
-    return pTerminateProcess(hProcess, uExitCode);
+    return Result;
 }
 #pragma endregion
-
-// 获取进程名的函数
-std::string GetProcessNameById(DWORD processId) {
-    std::string processName = "";
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processId);
-    if (hProcess) {
-        HMODULE hMod;
-        DWORD cbNeeded;
-        if (EnumProcessModules(hProcess, &hMod, sizeof(hMod), &cbNeeded)) {
-            char szProcessName[MAX_PATH];
-            if (GetModuleBaseNameA(hProcess, hMod, szProcessName, sizeof(szProcessName) / sizeof(TCHAR))) {
-                processName = szProcessName;
-            }
-        }
-        CloseHandle(hProcess);
-    }
-    return processName;
-}
-
-std::string GetParentProcessName(HANDLE hProcess) {
-    DWORD dwProcessId = GetProcessId(hProcess);
-    if (dwProcessId == 0) {
-        std::cerr << "Failed to get process ID!" << std::endl;
-        return "";
-    }
-
-    // 创建进程快照
-    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (hSnapshot == INVALID_HANDLE_VALUE) {
-        std::cerr << "Failed to create snapshot!" << std::endl;
-        return "";
-    }
-
-    PROCESSENTRY32 pe32;
-    pe32.dwSize = sizeof(PROCESSENTRY32);
-
-    // 遍历进程列表
-    if (Process32First(hSnapshot, &pe32)) {
-        do {
-            // 找到目标进程的进程信息
-            if (pe32.th32ProcessID == dwProcessId) {
-                // 获取父进程的进程 ID
-                DWORD dwParentProcessId = pe32.th32ParentProcessID;
-
-                // 根据父进程的进程 ID 查找父进程名
-                HANDLE hParentProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, dwParentProcessId);
-                if (hParentProcess != NULL) {
-                    char szParentName[MAX_PATH];
-                    DWORD dwSize = MAX_PATH;
-                    if (QueryFullProcessImageNameA(hParentProcess, 0, szParentName, &dwSize)) {
-                        CloseHandle(hSnapshot);
-                        CloseHandle(hParentProcess);
-                        return szParentName;
-                    }
-                    CloseHandle(hParentProcess);
-                }
-                break;
-            }
-        } while (Process32Next(hSnapshot, &pe32));
-    }
-
-    CloseHandle(hSnapshot);
-    return "";
-}
 
 // 判断是否是需要注入的进程
 BOOL GetFristModuleName(DWORD Pid, LPCTSTR ExeName)
@@ -201,8 +183,7 @@ LONG AttachDetours(VOID)
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
 
-    ATTACH(&(PVOID&)pTerminateProcess, MyTerminateProcess);
-
+    ATTACH(&(PVOID&)pNtQuerySystemInformation, MyNtQuerySystemInformation);
     return DetourTransactionCommit();
 }
 
@@ -265,8 +246,7 @@ LONG DetachDetours(VOID)
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
 
-    DETACH(&(PVOID&)pTerminateProcess, MyTerminateProcess);
-
+    DETACH(&(PVOID&)pNtQuerySystemInformation, MyNtQuerySystemInformation);
     return DetourTransactionCommit();
 }
 
