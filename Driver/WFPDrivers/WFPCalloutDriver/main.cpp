@@ -16,6 +16,14 @@ void DriverUnload(PDRIVER_OBJECT DriverObject)
 }
 
 
+typedef struct FILTER_INFO
+{
+	FWPS_CALLOUT  def_callout;
+	FWPM_CALLOUT  def_calloutm;
+	FWPM_SUBLAYER def_sublayer;
+	FWPM_FILTER   def_filter;
+}FILTER_INFO, *PFILTER_INFO;
+
 
 EXTERN_C NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {

@@ -24,7 +24,9 @@ typedef struct _DNS_HEADER
 }
 DNS_HEADER, * PDNS_HEADER;
 
-HANDLE EngHandle = nullptr;
+#define DNS_HEADER_LEN 12     // sizeof(DNS_HEADER)
+
+HANDLE EngHandle = NULL;
 UINT32 CalloutId = 0;
 UINT32 SystemCalloutId = 0; 
 UINT64 FilterId = 0;
@@ -106,56 +108,66 @@ VOID ClassifyCallback(
 	const FWPS_FILTER* filter,
 	UINT64 flowContext,
 	FWPS_CLASSIFY_OUT* classifyOut
-) {
-	classifyOut->actionType = FWP_ACTION_PERMIT;
+)
+{
+	UNREFERENCED_PARAMETER(inFixedValues);
+	UNREFERENCED_PARAMETER(inMetaValues);
+	UNREFERENCED_PARAMETER(classifyContext);
+	UNREFERENCED_PARAMETER(filter);
+	UNREFERENCED_PARAMETER(flowContext);
+	UNREFERENCED_PARAMETER(classifyOut);
 
-	if (inFixedValues->incomingValue[FWPS_FIELD_DATAGRAM_DATA_V4_IP_PROTOCOL].value.uint8 != IPPROTO_UDP || 
-		inFixedValues->incomingValue[FWPS_FIELD_DATAGRAM_DATA_V4_IP_REMOTE_PORT].value.uint16 != 53 ||
-		inFixedValues->incomingValue[FWPS_FIELD_DATAGRAM_DATA_V4_DIRECTION].value.uint32 != FWP_DIRECTION_OUTBOUND)
+	// Layer data contains the packet
+	if (layerData == NULL)
 	{
 		return;
 	}
-	ULONG UdpHeaderLength = 0;
-	BOOL isOutBound = FALSE;
-	PNET_BUFFER pNetBuffer = NET_BUFFER_LIST_FIRST_NB((PNET_BUFFER_LIST)layerData);
-	if (pNetBuffer == NULL)
+	DbgPrint("layerId :%d, protocol:%d, port:%d",
+		inFixedValues->layerId,
+		inFixedValues->incomingValue[FWPS_FIELD_OUTBOUND_TRANSPORT_V4_IP_PROTOCOL].value.uint8,
+		inFixedValues->incomingValue[FWPS_FIELD_OUTBOUND_TRANSPORT_V4_IP_REMOTE_PORT].value.uint16);
+	if (inFixedValues->layerId != FWPS_LAYER_OUTBOUND_TRANSPORT_V4)
 	{
-		goto end;
+		return;
 	}
-	ULONG UdpContentLength = NET_BUFFER_DATA_LENGTH(pNetBuffer);
-	if (UdpContentLength == 0)
+	if (inFixedValues->incomingValue[FWPS_FIELD_OUTBOUND_TRANSPORT_V4_IP_PROTOCOL].value.uint8 != IPPROTO_UDP)
 	{
-		goto end;
+		return;
+	}
+	if(inFixedValues->incomingValue[FWPS_FIELD_OUTBOUND_TRANSPORT_V4_IP_REMOTE_PORT].value.uint16 != 53)
+	{
+		
+		return;
 	}
 
-	UINT8 direction =inFixedValues->incomingValue[FWPS_FIELD_DATAGRAM_DATA_V4_DIRECTION].value.uint8;
-	if (direction == FWP_DIRECTION_OUTBOUND)
+	NET_BUFFER_LIST* netBufferList = (NET_BUFFER_LIST*)layerData;
+	if (netBufferList == NULL)
 	{
-		UdpHeaderLength = inMetaValues->transportHeaderSize;
-		if (UdpHeaderLength == 0 || UdpContentLength < UdpHeaderLength) {
-			goto end;
-		}
-		UdpContentLength -= UdpHeaderLength;
-		isOutBound = TRUE;
+		return;
 	}
-	else
+	NET_BUFFER* netBuffer = NET_BUFFER_LIST_FIRST_NB(netBufferList);
+	if (netBuffer == NULL)
 	{
-		goto end;
+		return;
 	}
 
-	PVOID UdpContent = ExAllocatePoolWithTag(NonPagedPool, UdpContentLength + UdpHeaderLength, 'Tsnd');
-	if (UdpContent == NULL)
+	ULONG dataLength = NET_BUFFER_DATA_LENGTH(netBuffer);
+	if (dataLength < 12)
 	{
-		goto end;
+		return;
 	}
 
-	PVOID ndisBuffer = NdisGetDataBuffer(pNetBuffer, UdpContentLength + UdpHeaderLength, UdpContent, 1, 0);
-	if (ndisBuffer == nullptr) {
-		goto end;
+	PUCHAR packetData = (PUCHAR)NdisGetDataBuffer(netBuffer, dataLength, NULL, 1, 0);
+	if (packetData == NULL)
+	{
+		return;
 	}
-	ResolveDnsPacket(ndisBuffer, UdpContentLength + UdpHeaderLength, UdpHeaderLength);
-end:
-	return;
+	PUCHAR dnsPayload = packetData + DNS_HEADER_LEN;
+	ULONG dnsPayloadLength = dataLength - DNS_HEADER_LEN;
+
+	CHAR domainName[256] = { 0 };
+	ULONG domainNameLength = 0;
+	PUCHAR ptr = dnsPayload;
 }
 
 NTSTATUS NotifyCallback(
@@ -167,8 +179,6 @@ NTSTATUS NotifyCallback(
 	UNREFERENCED_PARAMETER(filterKey);
 	UNREFERENCED_PARAMETER(filter);
 
-	DbgPrint("[*] inside callout driver udp notify logic...\n");
-
 	return STATUS_SUCCESS;
 }
 
@@ -179,52 +189,55 @@ NTSTATUS RegisterNetworkFilterUDP(PDEVICE_OBJECT DeviceObject)
 	NTSTATUS status = STATUS_SUCCESS;
 
 	// open filter engine session 
-	status = FwpmEngineOpen(NULL, RPC_C_AUTHN_WINNT, NULL, NULL, &EngHandle);
-	if (!NT_SUCCESS(status)) {
-		DbgPrint("[*] failed to open filter engine\n");
-		return status;
+	if (EngHandle == NULL)
+	{
+		status = FwpmEngineOpen(NULL, RPC_C_AUTHN_WINNT, NULL, NULL, &EngHandle);
+		if (!NT_SUCCESS(status)) {
+			DbgPrint("[salmon] failed to open filter engine\n");
+			return status;
+		}
 	}
 
 	// register callout in filter engine 
-	FWPS_CALLOUT callout = {};
-	callout.calloutKey = EXAMPLE_CALLOUT_UDP_GUID;
-	callout.flags = 0;
+	FWPS_CALLOUT callout = {0};
+	callout.calloutKey = CALLOUT_DNS_OUT_GUID;
 	callout.classifyFn = ClassifyCallback;
 	callout.notifyFn = NotifyCallback;
-	callout.flowDeleteFn = nullptr;
+	callout.flowDeleteFn = NULL;
 	
 	status =  FwpsCalloutRegister(DeviceObject, &callout, &CalloutId);
 	if (!NT_SUCCESS(status)) 
 	{
-		DbgPrint("[*] failed to register callout in filter engine\n");
+		DbgPrint("[salmon] failed to register callout in filter engine\n");
 		return status;
 	}
 
 	// add callout to the system 
 	FWPM_CALLOUT calloutm = { };
-	calloutm.flags = 0;							 
-	calloutm.displayData.name = L"example callout udp";
-	calloutm.displayData.description = L"example PoC callout for udp ";
-	calloutm.calloutKey = EXAMPLE_CALLOUT_UDP_GUID;
-	calloutm.applicableLayer = FWPM_LAYER_DATAGRAM_DATA_V4;
+	//calloutm.flags = 0;							 
+	calloutm.displayData.name = L"DNS_OUT callout";
+	calloutm.displayData.description = L"DNS_OUT callout for filtering DNS traffic";
+	calloutm.calloutKey = CALLOUT_DNS_OUT_GUID;
+	calloutm.applicableLayer = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
 	
 
 	status =  FwpmCalloutAdd(EngHandle, &calloutm, NULL, &SystemCalloutId);
 	if (!NT_SUCCESS(status)) {
-		DbgPrint("[*] failed to add callout to the system \n");
+		DbgPrint("[salmon] failed to add callout to the system \n");
 		return status;
 	}
 
 	// create a sublayer to group filters (not actually required 
 	FWPM_SUBLAYER sublayer = {};
-	sublayer.displayData.name = L"PoC sublayer example filters";
-	sublayer.displayData.name = L"PoC sublayer examle filters";
-	sublayer.subLayerKey = EXAMPLE_FILTERS_SUBLAYER_GUID;
+	sublayer.displayData.name = L"DNS_OUT sublayer";
+	sublayer.displayData.name = L"DNS_OUT sublayer for filters";
+	sublayer.subLayerKey = FILTERS_DNS_OUT_SUBLAYER_GUID;
 	sublayer.weight = 65535;
 
 
 	status =  FwpmSubLayerAdd(EngHandle, &sublayer, NULL);
-	if (!NT_SUCCESS(status)) {
+	if (!NT_SUCCESS(status)) 
+	{
 		DbgPrint("[*] failed to create a sublayer\n");
 		return status;
 	}
@@ -236,24 +249,22 @@ NTSTATUS RegisterNetworkFilterUDP(PDEVICE_OBJECT DeviceObject)
 	weight.uint64 = &weightValue;
 
 	// process every packet , no conditions 
-	FWPM_FILTER_CONDITION conditions[1] = { 0 };										\
+	FWPM_FILTER_CONDITION conditions[1] = { 0 };
 
-		FWPM_FILTER filter = {};
-	filter.displayData.name = L"example filter callout udp";
-	filter.displayData.name = L"example filter calout udp";
-	filter.layerKey = FWPM_LAYER_DATAGRAM_DATA_V4;
-	filter.subLayerKey = EXAMPLE_FILTERS_SUBLAYER_GUID;
+	FWPM_FILTER filter = {};
+	filter.displayData.name = L"DNS_OUT Filter";
+	filter.displayData.name = L"Filter for DNS_OUT traffic";
+	filter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+	filter.subLayerKey = FILTERS_DNS_OUT_SUBLAYER_GUID;
 	filter.weight = weight;
 	filter.numFilterConditions = 0;
 	filter.filterCondition = conditions;
 	filter.action.type = FWP_ACTION_CALLOUT_INSPECTION;
-	filter.action.calloutKey = EXAMPLE_CALLOUT_UDP_GUID;
+	filter.action.calloutKey = CALLOUT_DNS_OUT_GUID;
 	
 
 	return FwpmFilterAdd(EngHandle, &filter, NULL, &FilterId);
 }
-
-
 
 
 void UnregisterNetwrokFilterUDP()
@@ -263,7 +274,7 @@ void UnregisterNetwrokFilterUDP()
 		if (FilterId) 
 		{
 			FwpmFilterDeleteById(EngHandle, FilterId);
-			FwpmSubLayerDeleteByKey(EngHandle, &EXAMPLE_FILTERS_SUBLAYER_GUID);
+			FwpmSubLayerDeleteByKey(EngHandle, &FILTERS_DNS_OUT_SUBLAYER_GUID);
 		}
 
 		// Remove the callout from the FWPM_LAYER_INBOUND_TRANSPORT_V4 layer
