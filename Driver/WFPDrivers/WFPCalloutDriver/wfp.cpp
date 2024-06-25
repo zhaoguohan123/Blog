@@ -1,6 +1,6 @@
 #include <ntddk.h>
 #include "wfp.h"
-
+#pragma pack(push, 1)
 typedef struct _DNS_HEADER
 {
 	WORD    Xid;
@@ -24,7 +24,16 @@ typedef struct _DNS_HEADER
 }
 DNS_HEADER, * PDNS_HEADER;
 
+typedef struct {
+	WORD qtype; // Query type
+	WORD qclass; // Query class
+} DNS_QUESTION;
+#pragma pack(pop)
+
 #define DNS_HEADER_LEN 12     // sizeof(DNS_HEADER)
+#define UDP_HEADER_LEN 8
+#define DNS_MAX_LEN    128
+#define MEM_TAG		   'salm'
 
 HANDLE EngHandle = NULL;
 UINT32 CalloutId = 0;
@@ -32,10 +41,10 @@ UINT32 SystemCalloutId = 0;
 UINT64 FilterId = 0;
 ULONG nDataLength = 0;
 
-VOID ResolveDnsPacket(void* packet, size_t packetSize , size_t udpHeaderLen){
+VOID ResolveDnsPacket(void* packet, size_t packetSize){
 	PHYSICAL_ADDRESS highestAcceptableWriteBufferAddr;
 	highestAcceptableWriteBufferAddr.QuadPart = MAXULONG64;
-	if (packetSize < sizeof(DNS_HEADER)) 
+	if (packetSize < DNS_HEADER_LEN)
 	{
 		return;
 	}
@@ -44,23 +53,23 @@ VOID ResolveDnsPacket(void* packet, size_t packetSize , size_t udpHeaderLen){
 	{
 		return;
 	}
-	size_t dnsDataLength = packetSize - sizeof(DNS_HEADER);
+	size_t dnsDataLength = packetSize - DNS_HEADER_LEN - UDP_HEADER_LEN;
 
 	if (dnsDataLength >= packetSize) {
 		return;
 	}
 
-	char* dnsData = (char*)packet + sizeof(DNS_HEADER) + udpHeaderLen;
-	char* domainName = reinterpret_cast<char*>(MmAllocateContiguousMemory(128, highestAcceptableWriteBufferAddr));
+	char* dnsData = (char*)packet + DNS_HEADER_LEN + UDP_HEADER_LEN;
+	char* domainName = reinterpret_cast<char*>(MmAllocateContiguousMemory(DNS_MAX_LEN, highestAcceptableWriteBufferAddr));
 	if (domainName == NULL) 
 	{
 		return;
 	}
 
-	memset(domainName, '\0', 128);
+	memset(domainName, '\0', DNS_MAX_LEN);
 
 	bool isSuccess = TRUE;
-	size_t domainNameLength = 0;
+	DWORD domainNameLength = 0;
 
 	while (dnsDataLength > 0) {
 		const char length = *dnsData;
@@ -72,18 +81,20 @@ VOID ResolveDnsPacket(void* packet, size_t packetSize , size_t udpHeaderLen){
 			break;
 		}
 
-		if (domainNameLength + 1 > 128)
+		if (domainNameLength + 1 > DNS_MAX_LEN)
 		{
 			isSuccess = FALSE;
 			break;
 		}
 		char domainNameStr = *(dnsData + 1);
 		// 检查第一个字符是否是可读字符
-		if (isprint(domainNameStr) == FALSE) {
+		if (isprint(domainNameStr) == FALSE) 
+		{
 			isSuccess = FALSE;
 			break;
 		}
-		if (domainNameLength != 0) {
+		if (domainNameLength != 0) 
+		{
 			domainName[domainNameLength] = '.';
 			domainNameLength++;
 		}
@@ -152,22 +163,31 @@ VOID ClassifyCallback(
 	}
 
 	ULONG dataLength = NET_BUFFER_DATA_LENGTH(netBuffer);
-	if (dataLength < 12)
+	if (dataLength < DNS_HEADER_LEN)
+	{
+		return;
+	}
+	PVOID pBuffer = ExAllocatePoolZero(NonPagedPoolNx, dataLength, MEM_TAG);
+	if (pBuffer)
+	{
+		RtlZeroMemory(pBuffer, dataLength);
+	}
+	else 
 	{
 		return;
 	}
 
-	PUCHAR packetData = (PUCHAR)NdisGetDataBuffer(netBuffer, dataLength, NULL, 1, 0);
+	PUCHAR packetData = (PUCHAR)NdisGetDataBuffer(netBuffer, dataLength, pBuffer, 1, 0);
 	if (packetData == NULL)
 	{
 		return;
 	}
-	PUCHAR dnsPayload = packetData + DNS_HEADER_LEN;
-	ULONG dnsPayloadLength = dataLength - DNS_HEADER_LEN;
+	ResolveDnsPacket(pBuffer, dataLength);
 
-	CHAR domainName[256] = { 0 };
-	ULONG domainNameLength = 0;
-	PUCHAR ptr = dnsPayload;
+	if (pBuffer)
+	{
+		ExFreePoolWithTag(pBuffer, MEM_TAG);
+	}
 }
 
 NTSTATUS NotifyCallback(
