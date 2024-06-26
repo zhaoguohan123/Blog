@@ -8,7 +8,9 @@ void DriverUnload(PDRIVER_OBJECT DriverObject)
 {
 	UNREFERENCED_PARAMETER(DriverObject);
 	
-	UnregisterNetwrokFilterUDP();
+	UnregisterNetwrokFilterUDP_OUT();
+
+	UnregisterNetwrokFilterUDP_IN();
 
 	IoDeleteDevice(DeviceObject);
 
@@ -32,17 +34,22 @@ EXTERN_C NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING Regis
 
 	status = IoCreateDevice(DriverObject, 0, NULL, FILE_DEVICE_UNKNOWN, 0, FALSE, &DeviceObject);
 	if (!NT_SUCCESS(status)) {
-		DbgPrint("salmon:[salmon] failed to crate device object for callout driver\n");
+		DbgPrint("[salmon] failed to crate device object for callout driver\n");
 		return status;
 	}
-	
-	status = RegisterNetworkFilterUDP(DeviceObject);
+
+	status = RegisterNetworkFilterUDP_OUT(DeviceObject);
 	if (!NT_SUCCESS(status)) {
-		DbgPrint("salmon:[salmon] failed to register callout filter driver\n");
+		return status;
+	}
+
+	status = RegisterNetworkFilterUDP_IN(DeviceObject);
+	if (!NT_SUCCESS(status)) 
+	{
 		return status;
 	}
 
 	DriverObject->DriverUnload = DriverUnload;
-	DbgPrint("salmon:[salmon] callout filter driver has been registered and loaded\n");
+	DbgPrint("[salmon] callout filter driver has been registered and loaded\n");
 	return status;
 }
