@@ -6,32 +6,72 @@
 typedef struct PROC_INFO_STRUCT
 {
     BOOL  bIsInjected;
-    DWORD dwPID;
+    std::set<DWORD> pids;
     std::wstring strProcName;
 } PROC_INFO_STRUCT, *PPROC_INFO_STRUCT;
 
+
+#ifdef _WIN64
+    typedef DWORD(WINAPI* typedef_ZwCreateThreadEx)(
+        PHANDLE ThreadHandle,
+        ACCESS_MASK DesiredAccess,
+        LPVOID ObjectAttributes,
+        HANDLE ProcessHandle,
+        LPTHREAD_START_ROUTINE lpStartAddress,
+        LPVOID lpParameter,
+        ULONG CreateThreadFlags,
+        SIZE_T ZeroBits,
+        SIZE_T StackSize,
+        SIZE_T MaximumStackSize,
+        LPVOID pUnkown
+        );
+#else
+    typedef DWORD(WINAPI* typedef_ZwCreateThreadEx)(
+        PHANDLE ThreadHandle,
+        ACCESS_MASK DesiredAccess,
+        LPVOID ObjectAttributes,
+        HANDLE ProcessHandle,
+        LPTHREAD_START_ROUTINE lpStartAddress,
+        LPVOID lpParameter,
+        BOOL CreateSuspended,
+        DWORD dwStackSize,
+        DWORD dw1,
+        DWORD dw2,
+        LPVOID pUnkown
+        );
+#endif 
 
 class RemoteThreadInject
 {
 private:
     std::wstring dll_path_;
 
+    std::wstring dll_name_;
+
     std::wstring proc_name_;
 
     std::shared_ptr<PROC_INFO_STRUCT> proc_info_;
 
-    DWORD GetProcIdFromProcName(LPWSTR);
+    VOID GetProcIdFromProcName(LPWSTR);
 
-    BOOL CheckDllInProcess();
+    BOOL ProcessHasLoadDll(DWORD pid, std::wstring & dll);
+
+    BOOL EnableDebugPrivilege(BOOL bEnablePrivilege);
+
+    BOOL ZwCreateThreadExInjectDll(DWORD dwProcessId, std::wstring & pszDllFileName);
+
+    BOOL ZwCreateThreadExEjectDll(DWORD dwProcessId, std::wstring & pszDllFileName);
+
 
 public:
-    void Initialize();
+    BOOL Initialize();
 
-    BOOL InjectDll();
+    VOID InjectDll();
 
-    BOOL EjectDll();
+    VOID EjectDll();
 
-    RemoteThreadInject(std::wstring , std::wstring );
+    // 待注入的进程名，待注入的dll名
+    RemoteThreadInject(std::wstring , std::wstring);
 
     ~RemoteThreadInject();
 };

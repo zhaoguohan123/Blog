@@ -1,7 +1,7 @@
 #include "RemoteThreadInject.h"
 
-RemoteThreadInject::RemoteThreadInject(std::wstring proc_name, std::wstring dll_path):
-    dll_path_(dll_path),
+RemoteThreadInject::RemoteThreadInject(std::wstring proc_name, std::wstring dll_name):
+    dll_name_(dll_name),
     proc_info_(nullptr),
     proc_name_(proc_name)
 {
@@ -13,22 +13,11 @@ RemoteThreadInject::~RemoteThreadInject()
 {
 }
 
-DWORD RemoteThreadInject::GetProcIdFromProcName(LPWSTR PName)
+VOID RemoteThreadInject::GetProcIdFromProcName(LPWSTR PName)
 {
-    DWORD bRet = 0;
     HANDLE snap = INVALID_HANDLE_VALUE;
     PROCESSENTRY32 Process;
     Process.dwSize = sizeof(PROCESSENTRY32);
-
-    wchar_t* endPtr;
-    DWORD intValue = std::wcstol(PName, &endPtr, 10); // 基数10表示十进制
-
-    if (*endPtr == L'\0') {
-        std::wcout << L"转换成功，整数值为：" << intValue << std::endl;
-        return intValue;
-    } else {
-        std::wcout << L"转换失败，字符串包含无效字符。" << std::endl;
-    }
 
     do
     {
@@ -47,11 +36,9 @@ DWORD RemoteThreadInject::GetProcIdFromProcName(LPWSTR PName)
         
         while (Process32Next(snap, &Process))
         {
-            if (_wcsnicmp(PName, Process.szExeFile, lstrlen(PName)) == 0)
+            if (!_wcsnicmp(PName, Process.szExeFile, lstrlen(PName)) && Process.cntThreads >= 1)
             {
-                bRet = Process.th32ProcessID;
-                LOGGER_INFO("proc id is {}",bRet);
-                break;
+                proc_info_->pids.insert(Process.th32ProcessID);
             }
         }
 
@@ -61,61 +48,185 @@ DWORD RemoteThreadInject::GetProcIdFromProcName(LPWSTR PName)
     {
         CloseHandle(snap);
     }
-
-    return bRet;
 }
 
-void RemoteThreadInject::Initialize()
+BOOL RemoteThreadInject::ProcessHasLoadDll(DWORD pid, std::wstring & dllname)
 {
-    proc_info_ = std::make_shared<PROC_INFO_STRUCT>();
-    proc_info_->dwPID = GetProcIdFromProcName((LPWSTR)proc_name_.c_str());
-    proc_info_->strProcName = proc_name_;
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
+    while (INVALID_HANDLE_VALUE == hSnapshot)
+    {
+        DWORD dwError = GetLastError();
+        if (dwError == ERROR_BAD_LENGTH) 
+        {
+            hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
+            continue;
+        }
+        else 
+        {
+            LOGGER_ERROR("CreateToolhelp32Snapshot failed : {} currentProcessId : {} targetProcessId : {}",
+                dwError, GetCurrentProcessId(), pid);
+            return FALSE;
+        }
+    }
+    MODULEENTRY32W mi{};
+    mi.dwSize = sizeof(MODULEENTRY32W); //第一次使用必须初始化成员
+    BOOL bRet = Module32FirstW(hSnapshot, &mi);
+    while (bRet) 
+    {
+        // mi.szModule是短路径
+        if (!_wcsnicmp(dllname.c_str(), mi.szModule, lstrlen(dllname.c_str()))) 
+        {
+            if (hSnapshot != NULL)
+            {
+                CloseHandle(hSnapshot);
+                hSnapshot = NULL;
+            }
+
+            return TRUE;
+        }
+        mi.dwSize = sizeof(MODULEENTRY32W);
+        bRet = Module32NextW(hSnapshot, &mi);
+    }
+
+    if (hSnapshot != NULL)
+    {
+        CloseHandle(hSnapshot);
+        hSnapshot = NULL;
+    }
+    return FALSE;
 }
 
-BOOL RemoteThreadInject::InjectDll()
+BOOL RemoteThreadInject::EnableDebugPrivilege(BOOL bEnablePrivilege)
 {
-    HANDLE                  hProcess = NULL;                                                        //保存目标进程的句柄
+     HANDLE hProcess = NULL;
+    TOKEN_PRIVILEGES tp{};
+    LUID luid;
+    hProcess = GetCurrentProcess();
+    HANDLE hToken = NULL;
+    
+    OpenProcessToken(hProcess, TOKEN_ALL_ACCESS, &hToken);
+
+    if (!LookupPrivilegeValueW(
+        NULL,            // lookup privilege on local system
+        SE_DEBUG_NAME,   // privilege to lookup 
+        &luid))        // receives LUID of privilege
+    {
+        LOGGER_ERROR("LookupPrivilegeValue error: {}", GetLastError());
+        CloseHandle(hToken);
+        return FALSE;
+    }
+
+    tp.PrivilegeCount = 1;
+    tp.Privileges[0].Luid = luid;
+    if (bEnablePrivilege)
+        tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+    else
+        tp.Privileges[0].Attributes = 0;
+
+    // Enable the privilege or disable all privileges.
+
+    if (!AdjustTokenPrivileges(
+        hToken,
+        FALSE,
+        &tp,
+        sizeof(TOKEN_PRIVILEGES),
+        (PTOKEN_PRIVILEGES)NULL,
+        (PDWORD)NULL))
+    {
+        LOGGER_ERROR("AdjustTokenPrivileges error: {}", GetLastError());
+        CloseHandle(hToken);
+        return FALSE;
+    }
+
+    if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
+    {
+        LOGGER_ERROR("The token does not have the specified privilege.");
+        CloseHandle(hToken);
+        return FALSE;
+    }
+    CloseHandle(hToken);
+    return TRUE;
+}
+
+BOOL RemoteThreadInject::ZwCreateThreadExInjectDll(DWORD dwProcessId, std::wstring &pszDllFileName)
+{
+    BOOL                    bRet = FALSE;
+    HANDLE                  hProcess = NULL;
     LPVOID                  pRemoteBuf = NULL;                                                      //目标进程开辟的内存的起始地址
     DWORD                   dwBufSize = (DWORD)(_tcslen(dll_path_.c_str()) + 1) * sizeof(TCHAR);    //开辟的内存的大小
-    LPTHREAD_START_ROUTINE  pThreadProc = NULL;                                                     //loadLibreayW函数的起始地址
+    HMODULE                 hNtdll = NULL;
+    HMODULE                 hKernel32 = NULL;
+    FARPROC                 pFuncProcAddr = NULL;                                                     //loadLibreayW函数的起始地址
     HMODULE                 hMod = NULL;                                                            //kernel32.dll模块的句柄
-    BOOL                    bRet = FALSE;
-    if (!(hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, proc_info_->dwPID)))//打开目标进程，获得句柄
+    DWORD                   lpExitCode = 0;
+    HANDLE                  hRemoteThread = NULL; 
+    typedef_ZwCreateThreadEx ZwCreateThreadEx = NULL;
+
+    do
     {
-        LOGGER_ERROR("OpenProcess({})!!! [{}]", proc_info_->dwPID, GetLastError());
-        goto INJECTDLL_EXIT;
-    }
-    pRemoteBuf = VirtualAllocEx(hProcess, NULL, dwBufSize, MEM_COMMIT, PAGE_READWRITE);//在目标进程空间开辟一块内存
-    if (pRemoteBuf == NULL)
-    {
-        LOGGER_ERROR("VirtualAllocEx() failed!!! [{}]", GetLastError());
-        goto INJECTDLL_EXIT;
-    }
-    if (!WriteProcessMemory(hProcess, pRemoteBuf,
-        (LPVOID)(dll_path_.c_str()), dwBufSize, NULL))//向开辟的内存复制dll的路径
-    {
-        LOGGER_ERROR("WriteProcessMemory() failed!!! [{}]", GetLastError());
-        goto INJECTDLL_EXIT;
-    }
-    hMod = GetModuleHandle(L"kernel32.dll");//获得本进程kernel32.dll的模块句柄
-    if (hMod == NULL)
-    {
-        LOGGER_ERROR("InjectDll() : GetModuleHandle(\"kernel32.dll\") failed!!! [{}]", GetLastError());
-        goto INJECTDLL_EXIT;
-    }
-    pThreadProc = (LPTHREAD_START_ROUTINE)GetProcAddress(hMod, "LoadLibraryW");//获得LoadLibraryW函数的起始地址
-    if (pThreadProc == NULL)
-    {
-        LOGGER_ERROR("InjectDll() : GetProcAddress(\"LoadLibraryW\") failed!!! [{}]", GetLastError());
-        goto INJECTDLL_EXIT;
-    }
-    HANDLE hRemotehandle = CreateRemoteThread(hProcess, NULL, 0, pThreadProc, pRemoteBuf, 0, NULL);
-    if (!hRemotehandle)
-    {
-        LOGGER_ERROR("InjectDll: MyCreateRemoteThread{} failed!!!", GetLastError());
-        goto INJECTDLL_EXIT;
-    }
-    WaitForSingleObject(hRemotehandle, INFINITE);
+        if (!(hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcessId)))//打开目标进程，获得句柄
+        {
+            LOGGER_ERROR("OpenProcess({})!!! [{}]", dwProcessId, GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+
+        pRemoteBuf = VirtualAllocEx(hProcess, NULL, dwBufSize, MEM_COMMIT, PAGE_READWRITE);//在目标进程空间开辟一块内存
+        if (pRemoteBuf == NULL)
+        {
+            LOGGER_ERROR("VirtualAllocEx() failed!!! [{}]", GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+
+        if (!WriteProcessMemory(hProcess, pRemoteBuf, (LPVOID)pszDllFileName.c_str(), dwBufSize, NULL))
+        {
+            LOGGER_ERROR("WriteProcessMemory() failed!!! [{}]", GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+        hKernel32 = GetModuleHandleW(L"kernel32.dll");
+        if (NULL == hKernel32)
+        {
+            LOGGER_ERROR("GetModuleHandleW kernel32.dll failed! err:{}", GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+
+        pFuncProcAddr = GetProcAddress(hKernel32, "LoadLibraryW");
+        if (NULL == pFuncProcAddr)
+        {
+            LOGGER_ERROR("GetProcAddress LoadLibraryW failed! err:{}",GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+
+        hNtdll = GetModuleHandleW(L"ntdll.dll");
+        if (NULL == hNtdll)
+        {
+            LOGGER_ERROR("GetModuleHandleW ntdll.dll failed! err:{}", GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+
+        ZwCreateThreadEx = (typedef_ZwCreateThreadEx)GetProcAddress(hNtdll, "ZwCreateThreadEx");
+        if (NULL == ZwCreateThreadEx)
+        {
+            LOGGER_ERROR("get address of ZwCreateThreadEx failed! err:{}",GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+
+        ZwCreateThreadEx(&hRemoteThread, PROCESS_ALL_ACCESS, NULL, hProcess,  (LPTHREAD_START_ROUTINE)pFuncProcAddr, pRemoteBuf, 0, 0, 0, 0, NULL);
+        if(NULL == hRemoteThread)
+        {
+            LOGGER_ERROR("ZwCreateThreadEx failed! err:{}", GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+        WaitForSingleObject(hRemoteThread, INFINITE);
+
+        GetExitCodeThread(hRemoteThread, &lpExitCode);
+        if (lpExitCode == 0)
+        {
+            LOGGER_ERROR("error inject failed!");
+            goto INJECTDLL_EXIT;
+        }
+
+        bRet = TRUE;
+    } while (FALSE);
 
 INJECTDLL_EXIT:
     if (pRemoteBuf)
@@ -128,108 +239,259 @@ INJECTDLL_EXIT:
         (void)CloseHandle(hProcess);
         hProcess = NULL;
     }
-    if (hRemotehandle)
+    if (hRemoteThread)
     {
-        CloseHandle(hRemotehandle);
-        hRemotehandle = NULL;
+        CloseHandle(hRemoteThread);
+        hRemoteThread = NULL;
     }
+    if (hNtdll)
+    {
+        FreeLibrary(hNtdll);
+        hNtdll = NULL;
+    }
+    if (hKernel32)
+    {
+        FreeLibrary(hKernel32);
+        hKernel32 = NULL;
+    }
+    
+    return bRet;
+}
+
+BOOL RemoteThreadInject::Initialize()
+{
+    BOOL bRet = TRUE;
+    proc_info_ = std::make_shared<PROC_INFO_STRUCT>();
+    proc_info_->strProcName = proc_name_;
+
+    TCHAR szPath[_MAX_PATH] = { 0 };
+    TCHAR szDrive[_MAX_DRIVE] = { 0 };
+    TCHAR szDir[_MAX_DIR] = { 0 };
+    TCHAR szFname[_MAX_FNAME] = { 0 };
+    TCHAR szExt[_MAX_EXT] = { 0 };
+    TCHAR CurBinPath[MAX_PATH] = { 0 };
+
+    if (0 == GetModuleFileNameW(NULL, szPath, sizeof(szPath) / sizeof(TCHAR)))
+    {
+        LOGGER_ERROR("GetModuleFileNameW failed. err:{}",GetLastError());
+    }
+
+    ZeroMemory(CurBinPath, sizeof(CurBinPath));
+    _wsplitpath_s(szPath, szDrive, szDir, szFname, szExt);
+    wsprintf(CurBinPath, L"%s%s", szDrive, szDir);
+
+    if (FALSE == PathFileExistsW(CurBinPath))
+    {
+        LOGGER_ERROR("PathFileExistsW failed! err:{}", GetLastError());
+        bRet = FALSE;
+    }
+    dll_path_ = std::wstring(CurBinPath) + dll_name_;
+    LOGGER_INFO("dll path:{}", U2A(dll_path_.c_str()));
 
     return bRet;
 }
 
-BOOL RemoteThreadInject::CheckDllInProcess()
+VOID RemoteThreadInject::InjectDll()
 {
-    // exe正在加载其他模块时，可能会报错
-    BOOL                    bMore = FALSE;
-    HANDLE                  hSnapshot = INVALID_HANDLE_VALUE;
-    MODULEENTRY32           me = { sizeof(me), };
-    
-
-    if (INVALID_HANDLE_VALUE ==(hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, proc_info_->dwPID)))//获得进程的快照
+    if (FALSE == EnableDebugPrivilege(TRUE)) 
     {
-        LOGGER_ERROR("CheckDllInProcess() : CreateToolhelp32Snapshot({}) failed!!! [{}]", proc_info_->dwPID, GetLastError());
-        return FALSE;
+        goto INJECTDLL_EXIT;
     }
 
-    bMore = Module32First(hSnapshot, &me);//遍历进程内得的所有模块
-    for (; bMore; bMore = Module32Next(hSnapshot, &me))
+    GetProcIdFromProcName((LPWSTR)proc_name_.c_str());
+
+    if (proc_info_->pids.size() == 0)
     {
-        if (!_tcsicmp(me.szModule, dll_path_.c_str()) || !_tcsicmp(me.szExePath,  dll_path_.c_str()))//模块名或含路径的名相符
+        LOGGER_ERROR("GetProcIdFromProcName() failed!!! [{}]", GetLastError());
+        goto INJECTDLL_EXIT;
+    }
+
+    for (auto dwPid: proc_info_->pids)
+    {
+        LOGGER_INFO("Inject pid({})", dwPid);
+        if (ProcessHasLoadDll(dwPid, dll_name_) == TRUE)
         {
-            (void)CloseHandle(hSnapshot);
-            return TRUE;
+            LOGGER_ERROR("pid({}) has contained target dll!", dwPid);
+            continue;
         }
-    }
-    (void)CloseHandle(hSnapshot);
-    return FALSE;
+
+        if (ZwCreateThreadExInjectDll(dwPid, dll_path_) == FALSE)
+        {
+            LOGGER_ERROR("Inject pid({}) failed! error:{}", dwPid, GetLastError());
+        }
+    }    
+
+INJECTDLL_EXIT:
+    EnableDebugPrivilege(FALSE);
 }
 
-BOOL RemoteThreadInject::EjectDll()
+VOID RemoteThreadInject::EjectDll()
 {
-    DWORD                   dwPID = proc_info_->dwPID;
-    LPWSTR                  szDllPath = (LPWSTR)dll_path_.c_str();
+    if (FALSE == EnableDebugPrivilege(TRUE)) 
+    {
+        goto INJECTDLL_EXIT;
+    }
 
-    BOOL                    bMore = FALSE, bFound = FALSE, bRet = FALSE;
-    HANDLE                  hSnapshot = INVALID_HANDLE_VALUE;
-    HANDLE                  hProcess = NULL;
-    MODULEENTRY32           me = { sizeof(me), };
-    LPTHREAD_START_ROUTINE  pThreadProc = NULL;
-    HMODULE                 hMod = NULL;
-    TCHAR                   szProcName[MAX_PATH] = { 0, };
-    
-    if (INVALID_HANDLE_VALUE == (hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, dwPID)))
+    GetProcIdFromProcName((LPWSTR)proc_name_.c_str());
+
+    if (proc_info_->pids.size() == 0)
     {
-        LOGGER_ERROR("EjectDll() : CreateToolhelp32Snapshot({}) failed!!! [{}]",  dwPID, GetLastError());
-        goto EJECTDLL_EXIT;
+        LOGGER_ERROR("GetProcIdFromProcName() failed!!! [{}]", GetLastError());
+        goto INJECTDLL_EXIT;
     }
-    bMore = Module32First(hSnapshot, &me);
-    for (; bMore; bMore = Module32Next(hSnapshot, &me))//查找模块句柄
+
+    for (auto dwPid: proc_info_->pids)
     {
-        if (!_tcsicmp(me.szModule, szDllPath) || !_tcsicmp(me.szExePath, szDllPath))
+        LOGGER_INFO("Eject pid({})", dwPid);
+        if (ZwCreateThreadExEjectDll(dwPid, dll_name_) == FALSE)
         {
-            bFound = TRUE;
-            break;
+            LOGGER_ERROR("Eject pid({}) failed! error:{}", dwPid, GetLastError());
         }
-    }
-    if (!bFound)
+    } 
+
+INJECTDLL_EXIT:
+    EnableDebugPrivilege(FALSE);
+}
+
+BOOL RemoteThreadInject::ZwCreateThreadExEjectDll(DWORD dwProcessId, std::wstring &pszDllFileName)
+{
+    BOOL                    bRet = FALSE;
+    HANDLE                  hProcess = NULL;
+    DWORD                   dwBufSize = (DWORD)(_tcslen(dll_path_.c_str()) + 1) * sizeof(TCHAR);    //开辟的内存的大小
+    HMODULE                 hNtdll = NULL;
+    HMODULE                 hKernel32 = NULL;
+    FARPROC                 pFuncProcAddr = NULL;
+    DWORD                   lpExitCode = 0;
+    HANDLE                  hRemoteThread = NULL; 
+    HANDLE                  hSnapshot = NULL;
+    typedef_ZwCreateThreadEx ZwCreateThreadEx = NULL;
+
+    do
     {
-        LOGGER_ERROR("EjectDll() : There is not {} module in process({}) memory!!!", U2A(szDllPath), dwPID);
-        goto EJECTDLL_EXIT;
-    }
-    if (!(hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwPID)))
+       hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, dwProcessId);
+        while (INVALID_HANDLE_VALUE == hSnapshot)
+        {
+            DWORD dwError = GetLastError();
+            if (dwError == ERROR_BAD_LENGTH) 
+            {
+                hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, dwProcessId);
+                continue;
+            }
+            else 
+            {
+                LOGGER_ERROR("CreateToolhelp32Snapshot failed : {} currentProcessId : {} targetProcessId : {}",
+                    dwError, GetCurrentProcessId(), dwProcessId);
+               goto INJECTDLL_EXIT;
+            }
+        }
+        MODULEENTRY32W mi{};
+        mi.dwSize = sizeof(MODULEENTRY32W); //第一次使用必须初始化成员
+
+        BOOL isInjectedDll = FALSE;
+        BOOL tmp = Module32FirstW(hSnapshot, &mi);
+        if (tmp == FALSE)
+        {
+            LOGGER_ERROR("Module32FirstW failed : {}", GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+        
+        while (tmp) 
+        {
+            // mi.szModule是短路径
+            if (!_wcsnicmp(pszDllFileName.c_str(), mi.szModule, lstrlen(pszDllFileName.c_str()))) 
+            {
+                isInjectedDll = TRUE;
+                break;
+            }
+            mi.dwSize = sizeof(MODULEENTRY32W);
+            tmp = Module32NextW(hSnapshot, &mi);
+        }
+
+        if (isInjectedDll == FALSE)
+        {
+           LOGGER_ERROR("isInjectedDll == FALSE");
+           goto INJECTDLL_EXIT;
+        }
+
+        if (!(hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcessId)))//打开目标进程，获得句柄
+        {
+            LOGGER_ERROR("OpenProcess({})!!! [{}]", dwProcessId, GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+
+        hKernel32 = GetModuleHandleW(L"kernel32.dll");
+        if (NULL == hKernel32)
+        {
+            LOGGER_ERROR("GetModuleHandleW kernel32.dll failed! err:{}", GetLastError());
+            goto INJECTDLL_EXIT;
+        }        
+
+        pFuncProcAddr = GetProcAddress(hKernel32, "FreeLibrary");
+        if (NULL == pFuncProcAddr)
+        {
+            LOGGER_ERROR("GetProcAddress FreeLibrary failed! err:{}",GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+
+        hNtdll = GetModuleHandleW(L"ntdll.dll");
+        if (NULL == hNtdll)
+        {
+            LOGGER_ERROR("GetModuleHandleW ntdll.dll failed! err:{}", GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+
+        ZwCreateThreadEx = (typedef_ZwCreateThreadEx)GetProcAddress(hNtdll, "ZwCreateThreadEx");
+        if (NULL == ZwCreateThreadEx)
+        {
+            LOGGER_ERROR("get address of ZwCreateThreadEx failed! err:{}",GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+
+        ZwCreateThreadEx(&hRemoteThread, PROCESS_ALL_ACCESS, NULL, hProcess,  (LPTHREAD_START_ROUTINE)pFuncProcAddr, mi.modBaseAddr, 0, 0, 0, 0, NULL);
+        if(NULL == hRemoteThread)
+        {
+            LOGGER_ERROR("ZwCreateThreadEx failed! err:{}", GetLastError());
+            goto INJECTDLL_EXIT;
+        }
+        WaitForSingleObject(hRemoteThread, INFINITE);
+
+        GetExitCodeThread(hRemoteThread, &lpExitCode);
+        if (lpExitCode == 0)
+        {
+            LOGGER_ERROR("error dwProcessId: {} Eject failed!", dwProcessId);
+            goto INJECTDLL_EXIT;
+        }
+
+        bRet = TRUE;
+
+    } while (FALSE);
+
+INJECTDLL_EXIT:
+    if (hSnapshot != NULL)
     {
-        LOGGER_ERROR("EjectDll() : OpenProcess({}) failed!!! [{}]", dwPID, GetLastError());
-        goto EJECTDLL_EXIT;
+        CloseHandle(hSnapshot);
+        hSnapshot = NULL;
     }
-    hMod = GetModuleHandle(L"kernel32.dll");
-    if (hMod == NULL)
-    {
-        LOGGER_ERROR("EjectDll() : GetModuleHandle(\"kernel32.dll\") failed!!! [{}]", GetLastError());
-        goto EJECTDLL_EXIT;
-    }
-    pThreadProc = (LPTHREAD_START_ROUTINE)GetProcAddress(hMod, "FreeLibrary");
-    if (pThreadProc == NULL)
-    {
-        LOGGER_ERROR("EjectDll() : GetProcAddress(\"FreeLibrary\") failed!!! [{}]", GetLastError());
-        goto EJECTDLL_EXIT;
-    }
-    if (!CreateRemoteThread(hProcess, NULL, 0, pThreadProc, me.modBaseAddr, 0, NULL))
-    {
-        LOGGER_ERROR("EjectDll() : MyCreateRemoteThread() failed!!!");
-        goto EJECTDLL_EXIT;
-    }
-    bRet = TRUE;
-EJECTDLL_EXIT:
     if (hProcess)
     {
         (void)CloseHandle(hProcess);
         hProcess = NULL;
     }
-    if (hSnapshot != INVALID_HANDLE_VALUE)
+    if (hRemoteThread)
     {
-        (void)CloseHandle(hSnapshot);
-        hSnapshot = INVALID_HANDLE_VALUE;
+        CloseHandle(hRemoteThread);
+        hRemoteThread = NULL;
     }
-
+    if (hNtdll)
+    {
+        FreeLibrary(hNtdll);
+        hNtdll = NULL;
+    }
+    if (hKernel32)
+    {
+        FreeLibrary(hKernel32);
+        hKernel32 = NULL;
+    }
+    
     return bRet;
 }

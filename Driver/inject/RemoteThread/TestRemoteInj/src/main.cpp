@@ -4,23 +4,20 @@
 int wmain(int argc, LPWSTR * argv)
 {
     // usage Hooker.exe <processname.exe> <C:\\Path\\To\\DLL.dll>
+    
     init_logger("logs.log");
 
-    if (argc != 3)
-    {
-        std::wcout << TEXT("USAGE: Hooker.exe <processname.exe> <C:\\Path\\To\\DLL.dll>") << std::endl;
-        return 0;
-    }
-
-    WCHAR * DllPath = argv[2];
-    WCHAR * ProcessName = argv[1];
+    WCHAR DllPath[MAX_PATH] = L"DisableHotKey.dll";
+    WCHAR ProcessName[MAX_PATH] = L"winlogon.exe";
 
     std::shared_ptr<RemoteThreadInject> obj = std::make_shared<RemoteThreadInject>(ProcessName, DllPath);
-    obj->Initialize();
+    if  (FALSE == obj->Initialize())
+    {
+        return 0;
+    }
     obj->InjectDll();
 
     getchar();
     obj->EjectDll();
-
     return 0;
 }
