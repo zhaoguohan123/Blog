@@ -3,6 +3,12 @@
 
 #include "utils.h"
 
+namespace left_right 
+{
+
+}
+
+
 int main()
 {
     CallFunc();

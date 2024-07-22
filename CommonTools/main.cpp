@@ -22,7 +22,7 @@ int main(int argc, TCHAR* argv[])
 
     //TEST::test_job_queue();
 
-    TEST::test_CBT_hook_task_list_protect_proc_kill();
+   /* TEST::test_CBT_hook_task_list_protect_proc_kill();*/
 
     getchar();
     return 0;
