@@ -111,9 +111,6 @@ namespace clipboard {
 				return S_OK;
 			}
 
-			/*if (IsEqualIID(IID_IOperationsProgressDialog, riid)) {
-				return E_NOINTERFACE;
-			}*/
 			return CDataObject::QueryInterface(riid, ppv);
 		}
 

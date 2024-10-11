@@ -1,5 +1,21 @@
 #include "DataObject.h"
 
+void MyDebugPrintA(const char* format, ...)
+{
+	if (format == NULL)
+	{
+		return;
+	}
+	char buffer[1024 * 4] = { "[ZGHTEST]" };
+
+	va_list ap;
+	va_start(ap, format);
+	(void)StringCchVPrintfA(buffer + 9, _countof(buffer) - 9, format, ap);
+	va_end(ap);
+
+	OutputDebugStringA(buffer);
+}
+
 namespace clipboard {
 
 	const WCHAR* const c_szText = L"Clipboard Contents";

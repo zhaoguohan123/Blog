@@ -148,7 +148,7 @@ namespace clipboard {
 						
 			for (uint32_t index = 0; index < file_count; ++index) {
 				wcsncpy_s(pFileDescriptorArray[index].cFileName, _countof(pFileDescriptorArray[index].cFileName), L"TestFakeFile.txt", _TRUNCATE);
-				//pFileDescriptorArray[index].dwFlags = FD_UNICODE| FD_FILESIZE | FD_ATTRIBUTES| FD_PROGRESSUI| FD_CREATETIME| FD_SIZEPOINT;
+				
 				pFileDescriptorArray[index].dwFlags = FD_FILESIZE | FD_ATTRIBUTES | FD_CREATETIME | FD_WRITESTIME | FD_PROGRESSUI;
 				pFileDescriptorArray[index].nFileSizeLow = FAKE_FILE_SIZE;
 				pFileDescriptorArray[index].nFileSizeHigh = 0;

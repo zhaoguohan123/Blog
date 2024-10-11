@@ -17,6 +17,8 @@
 
 #pragma comment(lib, "shlwapi.lib")
 
+void MyDebugPrintA(const char* format, ...);
+
 namespace clipboard {
 
 	class CDataObject : public IDataObject
