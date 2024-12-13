@@ -9,15 +9,7 @@
 // Sample data object implementation that demonstrates how to leverage the
 // shell provided data object for the SetData() support
 
-#include <windows.h>
-#include <shlwapi.h>
-#include <strsafe.h>
-#include <shlobj.h>
-
-
-#pragma comment(lib, "shlwapi.lib")
-
-void MyDebugPrintA(const char* format, ...);
+#include "framework.h"
 
 namespace clipboard {
 
@@ -47,13 +39,11 @@ namespace clipboard {
 
 		IFACEMETHODIMP_(ULONG) AddRef()
 		{
-			OutputDebugString(L"CDataObject AddRef\n");
 			return InterlockedIncrement(&_cRef);
 		}
 
 		IFACEMETHODIMP_(ULONG) Release()
 		{
-			OutputDebugString(L"CDataObject Release\n");
 			long cRef = InterlockedDecrement(&_cRef);
 			if (0 == cRef)
 			{

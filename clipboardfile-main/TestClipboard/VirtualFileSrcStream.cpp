@@ -1,11 +1,10 @@
-#include "VirtualFileSrcStream.h"
-#include <Windows.h>
-#include <ShlObj.h>
+﻿#include "VirtualFileSrcStream.h"
 
 namespace clipboard {
 
 #define FAKE_FILE_SIZE 0
 //#define USE_HGLOBAL
+
 
 	HRESULT STDMETHODCALLTYPE FileStream::QueryInterface(REFIID riid, void **ppvObject)
 	{
@@ -23,73 +22,60 @@ namespace clipboard {
 			return S_OK;
 		}
 
-		/*if (IsEqualIID(IID_IOperationsProgressDialog, riid)) {
-			return E_NOINTERFACE;
-		}*/
-
 		return E_NOINTERFACE;
 	}
 
 	HRESULT STDMETHODCALLTYPE FileStream::Read(void *pv, ULONG cb, ULONG *pcbRead)
 	{		
-		ULONG bytes_to_read = min((ULONG)(file_size_.QuadPart - current_position_.QuadPart), cb);
-
-        return STG_E_INVALIDPOINTER;
-		const int BUF_SIZE = 1024 * 1024;
-		char *fake_data = new char[BUF_SIZE];
-		memset(fake_data, 'F', BUF_SIZE);
-
-		ULONG bytes_now = bytes_to_read;
-		while (bytes_now > 0) {
-			ULONG to_read_once = min(BUF_SIZE, bytes_now);
-			memcpy(pv, fake_data, to_read_once);
-			(char* &)pv += to_read_once;
-			bytes_now -= to_read_once;
+		HRESULT hr = S_FALSE;
+		ULONG total_read = 0;
+		ULONG bytes_read = 0;
+		if (file_.is_directory) //目录不需要读文件
+		{
+			return S_OK;
 		}
-		delete fake_data;
-		current_position_.QuadPart += bytes_to_read;
-
+		while (total_read <= cb) {
+			
+			if (!ReadFile(pPipeServer_->m_hPipe, (char *)pv + total_read, cb - total_read, &bytes_read, NULL))
+			{
+				LOGGER_ERROR("ReadFile failed! err:{}", GetLastError());
+				break;
+			}
+			if (bytes_read == 0) {
+				// 没有更多数据可读
+				LOGGER_ERROR("no more data to read!");
+				break;
+			}
+			total_read += bytes_read;
+		}
 		if (pcbRead) {
-			*pcbRead = bytes_to_read;
+			*pcbRead = total_read;
 		}
+#ifdef OLE_DEBUG
+		LOGGER_INFO("FileStream total_read:{}",  total_read);
+#endif // OLE_DEBUG
 
-		/*
-		* Always returns S_OK even if the end of the stream is reached before the
-		* buffer is filled
-		*/
-		::Sleep(100);
-		return S_FALSE;
+		return hr;
 	}
 
 	HRESULT STDMETHODCALLTYPE FileStream::Seek(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER *plibNewPosition)
 	{
-		ULARGE_INTEGER new_pos = { 0 };
-
-		switch (dwOrigin)
-		{
-		case STREAM_SEEK_SET:
-			break;
-		case STREAM_SEEK_CUR:
-			new_pos = current_position_;
-			break;
-		case STREAM_SEEK_END:
-			new_pos = file_size_;
-			break;
-		default:
-			return STG_E_INVALIDFUNCTION;
+		DWORD move_method;
+		switch (dwOrigin) {
+		case STREAM_SEEK_SET: move_method = FILE_BEGIN; break;
+		case STREAM_SEEK_CUR: move_method = FILE_CURRENT; break;
+		case STREAM_SEEK_END: move_method = FILE_END; break;
+		default: return E_INVALIDARG;
 		}
 
-		new_pos.QuadPart += dlibMove.QuadPart;
-		if (new_pos.QuadPart < 0 || new_pos.QuadPart > file_size_.QuadPart) {
-			return STG_E_INVALIDFUNCTION;
+		LARGE_INTEGER new_pos;
+		if (SetFilePointerEx(file_handle_, dlibMove, &new_pos, move_method)) {
+			if (plibNewPosition) {
+				plibNewPosition->QuadPart = new_pos.QuadPart;
+			}
+			return S_OK;
 		}
-
-		if (plibNewPosition){
-			*plibNewPosition = new_pos;
-		}
-
-		current_position_ = new_pos;
-		return S_OK;
+		return E_FAIL;
 	}
 
 	HRESULT WINAPI FileStream::Stat(STATSTG *pstatstg, DWORD grfStatFlag)
@@ -98,42 +84,57 @@ namespace clipboard {
 
 		pstatstg->pwcsName = NULL;
 		pstatstg->type = STGTY_STREAM;
-		pstatstg->cbSize = file_size_;
+		pstatstg->cbSize = file_.file_size;
 		return S_OK;
 	}
 
 	//////////////////////////////////////////////////////
 	VirtualFileSrcStream::~VirtualFileSrcStream()
 	{
-		if (file_stream_) {
-			file_stream_->Release();
-			file_stream_ = nullptr;
-		}
+		/*for (auto i:file_streams_)
+		{
+			if (i)
+			{
+				i->Release();
+				i = nullptr;
+			}
+		}*/
+
 	}
-	void VirtualFileSrcStream::init()
+	void VirtualFileSrcStream::init(std::shared_ptr<CFileInfo>& file_infos)
 	{
 		clip_format_filedesc_ = RegisterClipboardFormat(CFSTR_FILEDESCRIPTOR);
 		clip_format_filecontent_ = RegisterClipboardFormat(CFSTR_FILECONTENTS); 
-
+		file_infos_ = file_infos;
 	}
 
 	bool VirtualFileSrcStream::set_to_clipboard()
 	{
 		if (clip_format_filedesc_ == 0) {
-			init();
+			init(file_infos_);
 		}
 		return SUCCEEDED(::OleSetClipboard(this));
 	}
 	
 	STDMETHODIMP VirtualFileSrcStream::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
 	{
+		
 		ZeroMemory(pmedium, sizeof(*pmedium));
 
+		std::vector<FileInfoData> file_data = file_infos_->get_result();
+
+		if (file_data.size() == 0)
+		{
+			LOGGER_ERROR("get file data from file_data failed!");
+		}
+
 		HRESULT hr = DATA_E_FORMATETC;
+
+		// 文件描述符设置到剪切板中
 		if (pformatetcIn->cfFormat == clip_format_filedesc_ 
 			&& (pformatetcIn->tymed & TYMED_HGLOBAL))
 		{
-			uint32_t file_count = 1;
+			uint32_t file_count = file_data.size();
 			UINT cb = sizeof(FILEGROUPDESCRIPTOR) +	(file_count - 1) * sizeof(FILEDESCRIPTOR);
 			HGLOBAL h = GlobalAlloc(GHND | GMEM_SHARE, cb);
 			if (!h) 
@@ -147,23 +148,15 @@ namespace clipboard {
 			FILEDESCRIPTOR* pFileDescriptorArray = (FILEDESCRIPTOR*)((LPBYTE)pGroupDescriptor + sizeof(UINT));
 						
 			for (uint32_t index = 0; index < file_count; ++index) {
-				wcsncpy_s(pFileDescriptorArray[index].cFileName, _countof(pFileDescriptorArray[index].cFileName), L"TestFakeFile.txt", _TRUNCATE);
-				
+				wcsncpy_s(pFileDescriptorArray[index].cFileName, _countof(pFileDescriptorArray[index].cFileName), file_data[index].relative_path.c_str(), _TRUNCATE);
+
 				pFileDescriptorArray[index].dwFlags = FD_FILESIZE | FD_ATTRIBUTES | FD_CREATETIME | FD_WRITESTIME | FD_PROGRESSUI;
-				pFileDescriptorArray[index].nFileSizeLow = FAKE_FILE_SIZE;
-				pFileDescriptorArray[index].nFileSizeHigh = 0;
-				pFileDescriptorArray[index].dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
-
-				SYSTEMTIME lt;
-				GetLocalTime(&lt);
-				FILETIME ft;
-				SystemTimeToFileTime(&lt, &ft);
-				pFileDescriptorArray[index].ftLastAccessTime = ft;
-				pFileDescriptorArray[index].ftCreationTime = ft;
-				pFileDescriptorArray[index].ftLastWriteTime = ft;
-
-				/*pFileDescriptorArray[index].dwFlags = FD_ATTRIBUTES | FD_CREATETIME | FD_WRITESTIME | FD_PROGRESSUI;
-				pFileDescriptorArray[index].dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;*/
+				pFileDescriptorArray[index].nFileSizeLow = file_data[index].file_size.LowPart;
+				pFileDescriptorArray[index].nFileSizeHigh = file_data[index].file_size.HighPart;
+				pFileDescriptorArray[index].dwFileAttributes = file_data[index].attributes; 
+				pFileDescriptorArray[index].ftLastAccessTime = file_data[index].last_access_time;
+				pFileDescriptorArray[index].ftCreationTime = file_data[index].creation_time;
+				pFileDescriptorArray[index].ftLastWriteTime = file_data[index].last_write_time;
 			}
 			::GlobalUnlock(h);
 
@@ -172,24 +165,36 @@ namespace clipboard {
 			hr = S_OK;
 
 		}
-		else if (pformatetcIn->cfFormat == clip_format_filecontent_)
+		else if ( pformatetcIn->cfFormat == clip_format_filecontent_ && (pformatetcIn->tymed & TYMED_ISTREAM)) // 文件内容的处理
 		{
-			if ((pformatetcIn->tymed & TYMED_ISTREAM))
+#ifdef OLE_DEBUG
+			LOGGER_INFO("[VirtualFileSrcStream::GetData]paste file data. index = {} name = {}", pformatetcIn->lindex, to_byte_string(file_data[pformatetcIn->lindex].name));
+#endif // OLE_DEBUG
+			DWORD index = pformatetcIn->lindex;
+			
+			if (index >= 0 && index < file_data.size())
 			{
-				if (file_stream_ == nullptr) {
-					file_stream_ = new FileStream(FAKE_FILE_SIZE);
+				if (file_streams_.size()<=index)
+				{
+					file_streams_.resize(index + 1);
 				}
-				else {
+				
+				if (file_streams_[index] == nullptr)
+				{
+					file_streams_[index] = new(std::nothrow) FileStream(file_data[index]);
+				}
+				else 
+				{
 					LARGE_INTEGER mov;
 					mov.QuadPart = 0;
-					file_stream_->Seek(mov, STREAM_SEEK_SET, nullptr);
+					file_streams_[index]->Seek(mov, STREAM_SEEK_SET, nullptr);
 				}
-				pmedium->pstm = (IStream*)file_stream_;
-				pmedium->pstm->AddRef();
-
-				pmedium->tymed = TYMED_ISTREAM;
-				hr = S_OK;
 			}
+
+			pmedium->pstm = (IStream*)file_streams_[index];
+			pmedium->pstm->AddRef();
+			pmedium->tymed = TYMED_ISTREAM;
+			hr = S_OK;
 		}
 		else if (SUCCEEDED(_EnsureShellDataObject()))
 		{
@@ -252,8 +257,8 @@ namespace clipboard {
 		/* [optional][unique][in] */ __RPC__in_opt IBindCtx *pbcReserved)
 	{
 		in_async_op_ = true;
-		IOperationsProgressDialog *pDlg = nullptr;
-		::CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC_SERVER, IID_IOperationsProgressDialog, (LPVOID*)&pDlg);
+		//IOperationsProgressDialog *pDlg = nullptr;
+		//::CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC_SERVER, IID_IOperationsProgressDialog, (LPVOID*)&pDlg);
 		return S_OK;
 	}
 
@@ -269,16 +274,26 @@ namespace clipboard {
 		/* [unique][in] */ __RPC__in_opt IBindCtx *pbcReserved,
 		/* [in] */ DWORD dwEffects)
 	{
-		in_async_op_ = false;
+		for (auto i : file_streams_) 
+		{
+			if (i == NULL) {
+				continue;
+			}
+			if (i->pPipeServer_ == NULL) {
+				continue;
+			}
+			i->pPipeServer_->Cleanup();
+		}
+		in_async_op_ = true;
 		return S_OK;
 	}
 
 
-	STDAPI VirtualFileSrcStream_CreateInstance(REFIID riid, void **ppv)
+	STDAPI VirtualFileSrcStream_CreateInstance(REFIID riid, void **ppv, std::shared_ptr<CFileInfo>& file_infos)
 	{
 		*ppv = NULL;
 		VirtualFileSrcStream *p = new VirtualFileSrcStream();
-		p->init();
+		p->init(file_infos);
 		HRESULT hr = p ? S_OK : E_OUTOFMEMORY;
 		if (SUCCEEDED(hr))
 		{
